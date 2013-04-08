@@ -1,0 +1,6 @@
+//base protobuf file for common classes
+
+option java_package = "com.salesforce.hbase.protobuf.generated";
+option java_outer_classname = "SalesforceHBaseProtos";
+option java_generate_equals_and_hash = true;
+option optimize_for = SPEED;

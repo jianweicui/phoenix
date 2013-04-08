@@ -1,0 +1,16 @@
+// Statistics protobufs - used for compatability with HBase 0.96
+
+option java_package = "com.salesforce.hbase.protobuf.generated";
+option java_outer_classname = "StatisticProtos";
+option java_generate_equals_and_hash = true;
+option optimize_for = SPEED;
+
+message HistogramColumns {
+	repeated HistogramColumn columns = 1;
+	optional int32 columnWidth = 2;
+}
+
+message HistogramColumn{
+	required bytes value = 1;
+	optional int32 width = 2;
+}
