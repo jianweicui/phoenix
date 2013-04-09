@@ -1,13 +1,3 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
- * agreements. See the NOTICE file distributed with this work for additional information regarding
- * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License. You may obtain a
- * copy of the License at http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable
- * law or agreed to in writing, software distributed under the License is distributed on an "AS IS"
- * BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
- * for the specific language governing permissions and limitations under the License.
- */
 package com.salesforce.hbase.stats.impl;
 
 import java.io.IOException;
@@ -17,6 +7,7 @@ import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.coprocessor.BaseMasterObserver;
+import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.coprocessor.MasterCoprocessorEnvironment;
 import org.apache.hadoop.hbase.coprocessor.ObserverContext;
@@ -63,7 +54,7 @@ public class CleanupStatistics {
 
   public static void setupConfiguration(Configuration conf) {
     String[] classes = conf.getStrings(CoprocessorHost.MASTER_COPROCESSOR_CONF_KEY);
-    List<String> toAdd = classes == null? new ArrayList<String>(): Lists.newArrayList(classes);
+    List<String> toAdd = classes == null ? new ArrayList<String>() : Lists.newArrayList(classes);
     String removeTableCleanupClassName = RemoveTableOnDelete.class.getName();
     if (!toAdd.contains(removeTableCleanupClassName)) {
       toAdd.add(removeTableCleanupClassName);
@@ -76,30 +67,50 @@ public class CleanupStatistics {
 
   public static void addToTable(HTableDescriptor desc) throws IOException {
     String toAdd = RemoveRegionOnSplit.class.getName();
-    for(String name : desc.getCoprocessors()){
-      //if its already been added, we are done
-      if(name.equals(name)){
+    for (String name : desc.getCoprocessors()) {
+      // if its already been added, we are done
+      if (name.equals(name)) {
         return;
       }
     }
-    //hasn't been added yet, so we need to add it to the table
+    // hasn't been added yet, so we need to add it to the table
     desc.addCoprocessor(toAdd);
   }
 
   /**
    * Cleanup the stats for the parent region on region split
    */
-  public static class RemoveRegionOnSplit extends StatWritingRegionObserver {
+  public static class RemoveRegionOnSplit extends BaseRegionObserver {
+
+    protected StatisticsTable stats;
+
+    @Override
+    public void start(CoprocessorEnvironment e) throws IOException {
+      HTableDescriptor desc = ((RegionCoprocessorEnvironment) e).getRegion().getTableDesc();
+      if (SetupTableUtil.getStatsEnabled(desc)) {
+        stats = StatisticsTable.getStatisticsTableForCoprocessor(e, desc.getNameAsString());
+      }
+    }
+
+    @Override
+    public void stop(CoprocessorEnvironment e) throws IOException {
+      if (stats != null) {
+        stats.close();
+      }
+    }
 
     @Override
     public void postSplit(ObserverContext<RegionCoprocessorEnvironment> e, HRegion l, HRegion r)
         throws IOException {
+      // stats aren't enabled on the table, so we are done
+      if (stats == null) {
+        return;
+      }
       // get the parent
       HRegion parent = e.getEnvironment().getRegion();
       // and remove it from the stats
       stats.removeStatsForRegion(parent.getRegionInfo());
     }
-
   }
 
   public static class RemoveTableOnDelete extends BaseMasterObserver {
@@ -107,15 +118,17 @@ public class CleanupStatistics {
     @Override
     public void preDeleteTable(ObserverContext<MasterCoprocessorEnvironment> ctx, byte[] tableName)
         throws IOException {
-      HTableDescriptor desc =ctx.getEnvironment().getMasterServices().getTableDescriptors().get(tableName);
-      if(desc == null) {
+      HTableDescriptor desc = ctx.getEnvironment().getMasterServices().getTableDescriptors()
+          .get(tableName);
+      if (desc == null) {
         throw new IOException("Can't find table descriptor for table '" + Bytes.toString(tableName)
             + "' that is about to be deleted!");
       }
       // if we have turned on stats for this table
       if (SetupTableUtil.getStatsEnabled(desc)) {
-        StatisticsTable stats = StatisticsTable.getStatisticsTableForCoprocessor(ctx.getEnvironment(), desc.getNameAsString());
-        stats.removeStatsForTable(tableName);
+        StatisticsTable stats = StatisticsTable.getStatisticsTableForCoprocessor(
+          ctx.getEnvironment(), desc.getNameAsString());
+        stats.removeStats();
         stats.close();
       }
     }
