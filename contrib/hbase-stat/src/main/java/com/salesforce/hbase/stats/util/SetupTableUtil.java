@@ -74,18 +74,19 @@ public class SetupTableUtil {
     }
     } else {
       if (createStatTable) {
-        createStatsTable(admin);
+        statDesc = createStatsTable(admin);
       }
     }
     verifyStatsTable(statDesc);
   }
 
-  public static void createStatsTable(HBaseAdmin admin) throws IOException{
+  public static HTableDescriptor createStatsTable(HBaseAdmin admin) throws IOException {
     HTableDescriptor statDesc = new HTableDescriptor(STATS_TABLE_NAME);
     HColumnDescriptor col = new HColumnDescriptor(Constants.STATS_DATA_COLUMN_FAMILY);
     col.setMaxVersions(1);
     statDesc.addFamily(col);
     admin.createTable(statDesc);
+    return statDesc;
   }
   
   /**
