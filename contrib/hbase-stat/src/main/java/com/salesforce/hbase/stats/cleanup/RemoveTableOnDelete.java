@@ -25,7 +25,7 @@ public class RemoveTableOnDelete extends BaseMasterObserver {
     // if we have turned on stats for this table
     if (SetupTableUtil.getStatsEnabled(desc)) {
       StatisticsTable stats = StatisticsTable.getStatisticsTableForCoprocessor(
-        ctx.getEnvironment(), desc.getNameAsString());
+        ctx.getEnvironment(), desc.getName());
       stats.removeStats();
       stats.close();
     }

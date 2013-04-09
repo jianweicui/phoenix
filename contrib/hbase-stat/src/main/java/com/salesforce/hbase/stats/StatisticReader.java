@@ -41,7 +41,7 @@ public class StatisticReader<S extends StatisticValue> {
   public StatisticReader(StatisticsTable stats, IndividualStatisticReader<S> serde,
       byte[] statisticName) {
     this.table = stats.getUnderlyingTable();
-    this.source = this.table.getTableName();
+    this.source = stats.getSourceTableName();
     this.serde = serde;
     this.name = statisticName;
   }

@@ -29,7 +29,7 @@ public abstract class BaseStatistic extends BaseRegionObserver implements Statis
   @Override
   public void start(CoprocessorEnvironment e) throws IOException {
     HTableDescriptor desc = ((RegionCoprocessorEnvironment) e).getRegion().getTableDesc();
-    stats = StatisticsTable.getStatisticsTableForCoprocessor(e, desc.getNameAsString());
+    stats = StatisticsTable.getStatisticsTableForCoprocessor(e, desc.getName());
   }
 
   @Override

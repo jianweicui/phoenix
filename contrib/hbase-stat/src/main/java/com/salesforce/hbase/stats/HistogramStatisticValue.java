@@ -30,6 +30,7 @@ import com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns;
 public class HistogramStatisticValue extends StatisticValue {
 
   private HistogramColumns.Builder builder = HistogramColumns.newBuilder();
+  private HistogramColumns columns;
 
   /**
    * Build a statistic value - should only be used by the
@@ -94,8 +95,18 @@ public class HistogramStatisticValue extends StatisticValue {
     return builder.build().toByteArray();
   }
 
-  public HistogramColumns getHistogram() {
-    return this.builder.build();
+  /**
+   * Get the underlying columns for the histogram. After calling this method, any futher updates to
+   * the histogram are not guarranteed to work correctly. However, you can continue to call this
+   * method as many times as desired, though it will continue to return <b>a reference to the
+   * original columns</b> every time.
+   * @return a deserialized version of the histogram
+   */
+  public synchronized HistogramColumns getHistogram() {
+    if (columns == null) {
+      columns = this.builder.build();
+    }
+    return columns;
   }
 
   public static HistogramColumns getHistogram(byte[] raw) throws InvalidProtocolBufferException {

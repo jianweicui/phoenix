@@ -28,7 +28,7 @@ public class RemoveRegionOnSplit extends BaseRegionObserver {
   public void start(CoprocessorEnvironment e) throws IOException {
     HTableDescriptor desc = ((RegionCoprocessorEnvironment) e).getRegion().getTableDesc();
     if (SetupTableUtil.getStatsEnabled(desc)) {
-      stats = StatisticsTable.getStatisticsTableForCoprocessor(e, desc.getNameAsString());
+      stats = StatisticsTable.getStatisticsTableForCoprocessor(e, desc.getName());
     }
   }
 

@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.HRegionInfo;
@@ -19,6 +21,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import com.salesforce.hbase.stats.serialization.IndividualStatisticWriter;
 import com.salesforce.hbase.stats.util.Constants;
@@ -34,6 +37,7 @@ import com.salesforce.hbase.stats.util.Constants;
  */
 public class StatisticsTable implements Closeable {
 
+  private static final Log LOG = LogFactory.getLog(StatisticsTable.class);
   /** Map of the currently open statistics tables */
   private static final Map<String, StatisticsTable> tableMap = new HashMap<String, StatisticsTable>();
 
@@ -44,11 +48,11 @@ public class StatisticsTable implements Closeable {
    * @throws IOException if the table cannot be created due to an underlying HTable creation error
    */
   public synchronized static StatisticsTable getStatisticsTableForCoprocessor(
-      CoprocessorEnvironment env, String primaryTableName) throws IOException {
+      CoprocessorEnvironment env, byte[] primaryTableName) throws IOException {
     StatisticsTable table = tableMap.get(primaryTableName);
     if (table == null) {
-      table = new StatisticsTable(env.getTable(Constants.STATS_TABLE_NAME_BYTES));
-      tableMap.put(primaryTableName, table);
+      table = new StatisticsTable(env.getTable(Constants.STATS_TABLE_NAME_BYTES), primaryTableName);
+      tableMap.put(Bytes.toString(primaryTableName), table);
     }
     return table;
   }
@@ -56,14 +60,13 @@ public class StatisticsTable implements Closeable {
   private final HTableInterface target;
   private final byte[] sourceTableName;
 
-  private StatisticsTable(HTableInterface target) {
+  private StatisticsTable(HTableInterface target, byte[] sourceTableName) {
     this.target = target;
-    this.sourceTableName = target.getTableName();
+    this.sourceTableName = sourceTableName;
   }
 
   public StatisticsTable(Configuration conf, HTableDescriptor source) throws IOException {
-    this.target = new HTable(conf, Constants.STATS_TABLE_NAME);
-    this.sourceTableName = source.getName();
+    this(new HTable(conf, Constants.STATS_TABLE_NAME), source.getName());
   }
 
   /**
@@ -137,6 +140,7 @@ public class StatisticsTable implements Closeable {
 
     // serialize each of the metrics with the associated serializer
     for (StatisticValue metric : data) {
+      LOG.debug("Writing statistic: " + metric);
       target.put(serializer.serialize(metric));
     }
     // make sure it all reaches the target table when we are done
@@ -148,5 +152,9 @@ public class StatisticsTable implements Closeable {
    */
   HTableInterface getUnderlyingTable() {
     return target;
+  }
+
+  byte[] getSourceTableName() {
+    return this.sourceTableName;
   }
 }
