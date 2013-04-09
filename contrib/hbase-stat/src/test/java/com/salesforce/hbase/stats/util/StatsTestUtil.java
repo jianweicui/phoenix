@@ -17,7 +17,15 @@
  */
 package com.salesforce.hbase.stats.util;
 
+import java.io.IOException;
+
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+
+import com.salesforce.hbase.stats.TestTrackerImpl;
 
 /**
  * Helper utility for testing
@@ -31,6 +39,24 @@ public class StatsTestUtil {
   public static HTableDescriptor getValidPrimaryTableDescriptor() {
     HTableDescriptor table = new HTableDescriptor("primary_table_for_test");
     return table;
+  }
+
+  /**
+   * Count the total number of rows in the table
+   */
+  public static int getKeyValueCount(HTable table) throws IOException {
+    Scan scan = new Scan();
+    scan.setMaxVersions(Integer.MAX_VALUE - 1);
+  
+    ResultScanner results = table.getScanner(scan);
+    int count = 0;
+    for (Result res : results) {
+      count += res.list().size();
+      TestTrackerImpl.LOG.info(count + ") " + res);
+    }
+    results.close();
+  
+    return count;
   }
 
 }
