@@ -1,4 +1,4 @@
-These are the protobuf definition files used by hbase. The produced java
+These are the protobuf definition files used by hbase-stat. The produced java
 classes are generated into src/main/java/com/salesforce/hbase/protobuf/generated
 and then checked in.  The reasoning is that they change infrequently.
 
