@@ -38,18 +38,22 @@ At the very least, you should ensure that the table is created with the com.sale
 ```java
     HTableDescriptor primary = new HTableDescriptor("primary");
     primary.addFamily(new HColumnDescriptor(FAM));
+
+    // ...
+    //Add your own stats here
+    //...
+
     // setup the stats table
     HBaseAdmin admin = UTIL.getHBaseAdmin();
     //ensure statistics are enabled and the cleanup coprocessors setup
     SetupTableUtil.setupTable(admin, primary, true, false);
 ```
 
+#### SetupTableUtil
+
 In addition to settting up the cleanup coprocessors, the SetupTableUtil sets the 'stats enabled' flag in the primary table's descriptor. If this flag is enabled, the cleanup coprocessors (RemoveTableOnDelete and RemoveRegionOnSplit) will be enabled for the table
 
  * NOTE: if the cleanup coprocessors are not added to the table, setting the 'stats enabled' flag manually won't do anything. However, if you manually add the cleanup coprocessors, but don't enable stats on the descriptor, again, no cleanup will take place. It's highly recommended to use the SetupTableUtil to ensure you don't forget either side.
-
-
-#### SetupTableUtil
 
 You will also note that the SetupTableUtil has an option to ensure that the Statistics table is setup, *its highly recommneded that you use this option* to avoid accidentially forgetting and not having a statistics table when you go to write out statistics. With the wrong write configurations in hbase-site.xml, this could cause the statitic coprocessors to each block until they realize the table doesn't exist.
 

@@ -47,7 +47,7 @@ public class SetupTableUtil {
    * @param conf {@link Configuration} to update
    */
   public static void setupCluster(Configuration conf){
-    CleanupStatistics.setupConfiguration(conf);
+    CleanupStatistics.setupClusterConfiguration(conf);
   }
   
   public static void setupTable(HBaseAdmin admin, HTableDescriptor primaryTable,
@@ -55,7 +55,7 @@ public class SetupTableUtil {
       throws IOException {
     // add the right keys to the primary table
     primaryTable.setValue(TABLE_STATS_ENABLED_DESC_KEY, "true");
-    CleanupStatistics.addToTable(primaryTable);
+    CleanupStatistics.setupTable(primaryTable);
 
     if (!ensureStatTable) {
       return;

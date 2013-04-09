@@ -55,8 +55,8 @@ public abstract class BaseStatistic extends BaseRegionObserver implements Statis
       InternalScanner s) throws IOException {
     InternalScanner internalScan = s;
     if (scanType.equals(ScanType.MAJOR_COMPACT)) {
-      // this is the first CP accessed, so we need to just create a major comapction scanner, just
-      // like in the comapctor
+      // this is the first CP accessed, so we need to just create a major compaction scanner, just
+      // like in the compactor
       if (s == null) {
         Scan scan = new Scan();
         scan.setMaxVersions(store.getFamily().getMaxVersions());

@@ -18,6 +18,7 @@
 package com.salesforce.hbase.stats.cleanup;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -25,6 +26,10 @@ import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
 import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
 import org.apache.hadoop.hbase.regionserver.HRegion;
+import org.apache.hadoop.hbase.regionserver.InternalScanner;
+import org.apache.hadoop.hbase.regionserver.KeyValueScanner;
+import org.apache.hadoop.hbase.regionserver.ScanType;
+import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.statistics.StatisticsTable;
 
 import com.salesforce.hbase.stats.util.SetupTableUtil;
@@ -62,5 +67,19 @@ public class RemoveRegionOnSplit extends BaseRegionObserver {
     HRegion parent = e.getEnvironment().getRegion();
     // and remove it from the stats
     stats.removeStatsForRegion(parent.getRegionInfo());
+  }
+
+  /**
+   * We override this method to ensure that any scanner from a previous coprocessor is returned. The
+   * default behavior is to return <tt>null</tt>, which completely hoses any other coprocessors
+   * setup before, making ordering of coprocessors very important. By returning the passed scanner,
+   * we can avoid easy to make configuration errors.
+   */
+  @Override
+  public InternalScanner preCompactScannerOpen(ObserverContext<RegionCoprocessorEnvironment> c,
+      Store store, List<? extends KeyValueScanner> scanners, ScanType scanType, long earliestPutTs,
+      InternalScanner s) throws IOException {
+
+    return s;
   }
 }
