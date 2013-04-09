@@ -66,26 +66,30 @@ public class SetupTableUtil {
     }
     } else {
       if (createStatTable) {
-        statDesc = new HTableDescriptor(STATS_TABLE_NAME);
-        HColumnDescriptor col = new HColumnDescriptor(Constants.STATS_COLUMN_FAMILY);
-        col.setMaxVersions(1);
-        statDesc.addFamily(col);
-        admin.createTable(statDesc);
+        createStatsTable(admin);
       }
     }
     verifyStatsTable(statDesc);
   }
 
+  public static void createStatsTable(HBaseAdmin admin) throws IOException{
+    HTableDescriptor statDesc = new HTableDescriptor(STATS_TABLE_NAME);
+    HColumnDescriptor col = new HColumnDescriptor(Constants.STATS_DATA_COLUMN_FAMILY);
+    col.setMaxVersions(1);
+    statDesc.addFamily(col);
+    admin.createTable(statDesc);
+  }
+  
   /**
    * @param desc {@link HTableDescriptor} of the statistics table to verify
    */
   public static void verifyStatsTable(HTableDescriptor desc) {
-    if (!desc.hasFamily(Constants.STATS_COLUMN_FAMILY)) {
+    if (!desc.hasFamily(Constants.STATS_DATA_COLUMN_FAMILY)) {
       throw new IllegalStateException("Statistics table '" + desc
-          + "' doesn't have expected column family: " + Bytes.toString(Constants.STATS_COLUMN_FAMILY));
+          + "' doesn't have expected column family: " + Bytes.toString(Constants.STATS_DATA_COLUMN_FAMILY));
     }
     // only keep around a single version
-    int versions = desc.getFamily(Constants.STATS_COLUMN_FAMILY).getMaxVersions();
+    int versions = desc.getFamily(Constants.STATS_DATA_COLUMN_FAMILY).getMaxVersions();
     Preconditions.checkState(versions == 1,
       "Stats rows should only have a single version, but set to: " + versions);
   }

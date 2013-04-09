@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.coprocessor.BaseMasterObserver;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
@@ -23,11 +22,10 @@ import org.apache.hadoop.hbase.coprocessor.MasterCoprocessorEnvironment;
 import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
 import org.apache.hadoop.hbase.regionserver.HRegion;
+import org.apache.hadoop.hbase.statistics.StatisticsTable;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.collect.Lists;
-import com.salesforce.hbase.stats.StatWritingRegionObserver;
-import com.salesforce.hbase.stats.StatisticsTable;
 import com.salesforce.hbase.stats.util.SetupTableUtil;
 
 /**

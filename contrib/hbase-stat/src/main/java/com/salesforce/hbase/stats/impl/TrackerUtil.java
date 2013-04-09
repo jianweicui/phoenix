@@ -15,33 +15,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.salesforce.hbase.stats;
+package com.salesforce.hbase.stats.impl;
+
+import java.util.Arrays;
+
+import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.statistics.StatisticTracker;
 
 /**
- * Simple holder class for a metric on a ta
+ * Utilities for {@link StatisticTracker}s.
  */
-public class MetricValue {
+public class TrackerUtil {
 
-  private byte[] type;
-  private byte[] info;
-  private byte[] value;
-
-  public MetricValue(byte[] type, byte[] info, byte[] value) {
-    this.type = type;
-    this.info = info;
-    this.value = value;
+  private TrackerUtil() {
+    // private ctor for utils
   }
 
-  public byte[] getType() {
-    return type;
-  }
-
-  public byte[] getInfo() {
-    return info;
-  }
-
-  public byte[] getValue() {
-    return value;
+  public static byte[] copyRow(KeyValue kv) {
+    return Arrays.copyOfRange(kv.getBuffer(), kv.getRowOffset(),
+      kv.getRowOffset() + kv.getRowLength());
   }
 
 }

@@ -15,26 +15,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.salesforce.hbase.stats.util;
+package org.apache.hadoop.hbase.statistics;
 
-import org.apache.hadoop.hbase.util.Bytes;
+import java.util.List;
+
+import org.apache.hadoop.hbase.KeyValue;
 
 /**
- * General constants for hbase-stat
+ * Track a statistic for the column on a given region
  */
-public class Constants {
-  
+public interface StatisticTracker {
 
-  private Constants() {
-    // private ctor for utility class
-  }
+  /**
+   * Reset the statistic after the completion fo the compaction
+   */
+  public void clear();
 
-  
-  /** Name of the column family to store all the statistics data */
-  public static final byte[] STATS_DATA_COLUMN_FAMILY = Bytes.toBytes("STAT");
-  
-  /** Name of the statistics table */
-  public static final String STATS_TABLE_NAME = "_stats_";
-  
-  public static final byte[] STATS_TABLE_NAME_BYTES = Bytes.toBytes(STATS_TABLE_NAME);
+  /**
+   * @return the current statistics that the tracker has collected
+   */
+  public List<StatisticValue> getCurrentStats();
+
+  /**
+   * Update the current statistics with the next {@link KeyValue} to be written
+   * @param kv next {@link KeyValue} to be written
+   */
+  public void updateStatistic(KeyValue kv);
 }

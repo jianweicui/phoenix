@@ -8,20 +8,29 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
+import org.apache.hadoop.hbase.statistics.StatisticTracker;
+import org.apache.hadoop.hbase.statistics.StatisticValue;
+import org.apache.hadoop.hbase.statistics.StatisticsTable;
+import org.apache.hadoop.hbase.statistics.serialization.IndividualStatisticWriter;
 import org.apache.hadoop.io.MultipleIOException;
 
 import com.google.common.collect.Lists;
 
-public abstract class StatScanner implements InternalScanner {
+public class StatScanner implements InternalScanner {
   private static final Log LOG = LogFactory.getLog(StatScanner.class);
   private InternalScanner delegate;
   private StatisticsTable stats;
   private HRegionInfo region;
+  private StatisticTracker tracker;
+  private byte[] family;
 
-  public StatScanner(StatisticsTable stats, HRegionInfo region, InternalScanner delegate) {
+  public StatScanner(StatisticTracker tracker, StatisticsTable stats, HRegionInfo region,
+      InternalScanner delegate, byte[] family) {
+    this.tracker = tracker;
     this.stats = stats;
     this.delegate = delegate;
     this.region = region;
+    this.family = family;
   }
 
   public boolean next(List<KeyValue> result) throws IOException {
@@ -48,25 +57,26 @@ public abstract class StatScanner implements InternalScanner {
     return ret;
   }
 
+
   /**
    * Update the current statistics based on the lastest batch of key-values from the underlying
    * scanner
    * @param results next batch of {@link KeyValue}s
    */
-  protected abstract void updateStat(final List<KeyValue> results);
-
-  /**
-   * @return the metrics that should be written for the stats table. This is called <b>exactly
-   *         once</b> for each compaction.
-   */
-  protected abstract List<MetricValue> getCurrentStats();
+  protected void updateStat(final List<KeyValue> results) {
+    for (KeyValue kv : results) {
+      tracker.updateStatistic(kv);
+    }
+  }
 
   public void close() throws IOException {
     IOException toThrow = null;
     try {
       // update the statistics table
-      List<MetricValue> data = getCurrentStats();
-      stats.updateStats(region, data);
+      List<StatisticValue> data = this.tracker.getCurrentStats();
+      stats.updateStats(
+        new IndividualStatisticWriter(region.getTableName(), region.getRegionName(), family),
+        data);
     } catch (IOException e) {
       LOG.error("Failed to update statistics table!", e);
       toThrow = e;
