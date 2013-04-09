@@ -13,23 +13,50 @@ We want to make it easy to gather statistics about your HBase tables - there sho
 ## Usage
 =========
 
-There is a single 'system' table called '_stats'. When creating your table, you should use the ```SetupTableUtil``` to ensure that:
+###Cluster setup
 
-1. The table you are creating has the right description (e.g. includes the right coprocessors)
-2. A statistics table exists to match the table you are creating
+The only changes that need to be made to a generic configuration for a cluster is to add the RemoveTableOnDelete coprocessor to the list of Master Observers. This coprocessor cleans up the statistics for a table on delete, if that table has statistics 'enbabled' (see below). You should only need to add the following to your hbase-site.xml:
 
-For example, to create a table called 'primary' with the MinMaxKey statistic enabled and also create the statistics table, you would do:
+```
+<property>
+	<name>hbase.coprocessor.master.classes</name>
+	<value>com.salesforce.hbase.stats.cleanup.RemoveTableOnDelete</value>
+</property>
+```
+
+### Table creation
+
+All the work for gathering and cleaning statistics is handled via coprocessors. Generally, each statistic will have its own static methods for adding the coprocessor to the table (if not provided, the HTableDesriptor#addCoprocessor() method should suffice). For instance, to add the MinMaxKey statistic to a table, all you would do is:
+
+```java
+	HTableDescriptor primary = …
+	MinMaxKey.addToTable(primary)
+```
+
+At the very least, you should ensure that the table is created with the com.salesforce.hbase.stats.cleanup.RemoveRegionOnSplit coprocessor to ensure that when a region is removed (via splits or merges) that the stats for that region are also removed. This can be added manually (no recommended) or via the general setup table utility:
 
 ```java
     HTableDescriptor primary = new HTableDescriptor("primary");
     primary.addFamily(new HColumnDescriptor(FAM));
-    
-    //add the min/max key stats
-    MinMaxKey.addToTable(primary);
-
     // setup the stats table
     HBaseAdmin admin = UTIL.getHBaseAdmin();
-    SetupTableUtil.setupTable(admin, primary, true);
+    //ensure statistics are enabled and the cleanup coprocessors setup
+    SetupTableUtil.setupTable(admin, primary, true, false);
+```
+
+In addition to settting up the cleanup coprocessors, the SetupTableUtil sets the 'stats enabled' flag in the primary table's descriptor. If this flag is enabled, the cleanup coprocessors (RemoveTableOnDelete and RemoveRegionOnSplit) will be enabled for the table
+
+ * NOTE: if the cleanup coprocessors are not added to the table, setting the 'stats enabled' flag manually won't do anything. However, if you manually add the cleanup coprocessors, but don't enable stats on the descriptor, again, no cleanup will take place. It's highly recommended to use the SetupTableUtil to ensure you don't forget either side.
+
+
+#### SetupTableUtil
+
+You will also note that the SetupTableUtil has an option to ensure that the Statistics table is setup, *its highly recommneded that you use this option* to avoid accidentially forgetting and not having a statistics table when you go to write out statistics. With the wrong write configurations in hbase-site.xml, this could cause the statitic coprocessors to each block until they realize the table doesn't exist.
+
+To use it, you simply do the same as above, but ensure that the "ensureStatsTable" boolean flag is set:
+
+```java
+    SetupTableUtil.setupTable(admin, primary, true /* this flag! */, false);
 ```
 
 
@@ -65,10 +92,14 @@ This is because the MinMaxKey statistic uses the column name (in this case 'col'
 ## Building from source
 =======================
 
+From the base (hbase-stat) directory…
+
 To run tests
 
-    $ mvn -o clean test
+    $ mvn clean test
     
 To build a jar
 
     $ mvn clean package
+
+and then look in the target/ directory for the build jar

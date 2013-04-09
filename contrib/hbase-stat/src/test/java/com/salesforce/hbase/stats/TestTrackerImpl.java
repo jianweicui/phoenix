@@ -91,7 +91,7 @@ public abstract class TestTrackerImpl {
     primary.addFamily(new HColumnDescriptor(FAM));
     
     //make sure stats are enabled on the table
-    // SetupTableUtil.setupTable(UTIL.getHBaseAdmin(), primary, false);
+    SetupTableUtil.setupTable(UTIL.getHBaseAdmin(), primary, true, false);
     
     //do any further setup on the table
     preparePrimaryTableDescriptor(primary);

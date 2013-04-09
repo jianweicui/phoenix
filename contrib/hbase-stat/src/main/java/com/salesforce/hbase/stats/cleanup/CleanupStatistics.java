@@ -1,4 +1,4 @@
-package com.salesforce.hbase.stats.impl;
+package com.salesforce.hbase.stats.cleanup;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -6,18 +6,9 @@ import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.coprocessor.BaseMasterObserver;
-import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
-import org.apache.hadoop.hbase.coprocessor.MasterCoprocessorEnvironment;
-import org.apache.hadoop.hbase.coprocessor.ObserverContext;
-import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
-import org.apache.hadoop.hbase.regionserver.HRegion;
-import org.apache.hadoop.hbase.statistics.StatisticsTable;
-import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.collect.Lists;
-import com.salesforce.hbase.stats.util.SetupTableUtil;
 
 /**
  * Wrapper class around the necessary cleanup coprocessors.
@@ -75,62 +66,5 @@ public class CleanupStatistics {
     }
     // hasn't been added yet, so we need to add it to the table
     desc.addCoprocessor(toAdd);
-  }
-
-  /**
-   * Cleanup the stats for the parent region on region split
-   */
-  public static class RemoveRegionOnSplit extends BaseRegionObserver {
-
-    protected StatisticsTable stats;
-
-    @Override
-    public void start(CoprocessorEnvironment e) throws IOException {
-      HTableDescriptor desc = ((RegionCoprocessorEnvironment) e).getRegion().getTableDesc();
-      if (SetupTableUtil.getStatsEnabled(desc)) {
-        stats = StatisticsTable.getStatisticsTableForCoprocessor(e, desc.getNameAsString());
-      }
-    }
-
-    @Override
-    public void stop(CoprocessorEnvironment e) throws IOException {
-      if (stats != null) {
-        stats.close();
-      }
-    }
-
-    @Override
-    public void postSplit(ObserverContext<RegionCoprocessorEnvironment> e, HRegion l, HRegion r)
-        throws IOException {
-      // stats aren't enabled on the table, so we are done
-      if (stats == null) {
-        return;
-      }
-      // get the parent
-      HRegion parent = e.getEnvironment().getRegion();
-      // and remove it from the stats
-      stats.removeStatsForRegion(parent.getRegionInfo());
-    }
-  }
-
-  public static class RemoveTableOnDelete extends BaseMasterObserver {
-
-    @Override
-    public void preDeleteTable(ObserverContext<MasterCoprocessorEnvironment> ctx, byte[] tableName)
-        throws IOException {
-      HTableDescriptor desc = ctx.getEnvironment().getMasterServices().getTableDescriptors()
-          .get(tableName);
-      if (desc == null) {
-        throw new IOException("Can't find table descriptor for table '" + Bytes.toString(tableName)
-            + "' that is about to be deleted!");
-      }
-      // if we have turned on stats for this table
-      if (SetupTableUtil.getStatsEnabled(desc)) {
-        StatisticsTable stats = StatisticsTable.getStatisticsTableForCoprocessor(
-          ctx.getEnvironment(), desc.getNameAsString());
-        stats.removeStats();
-        stats.close();
-      }
-    }
   }
 }

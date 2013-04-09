@@ -26,7 +26,7 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.base.Preconditions;
-import com.salesforce.hbase.stats.impl.CleanupStatistics;
+import com.salesforce.hbase.stats.cleanup.CleanupStatistics;
 
 import static com.salesforce.hbase.stats.util.Constants.STATS_TABLE_NAME;
 
@@ -42,16 +42,24 @@ public class SetupTableUtil {
   }
 
 
+  /**
+   * Ensure all the necessary coprocessors are added to a cluster's configuration
+   * @param conf {@link Configuration} to update
+   */
   public static void setupCluster(Configuration conf){
     CleanupStatistics.setupConfiguration(conf);
   }
   
   public static void setupTable(HBaseAdmin admin, HTableDescriptor primaryTable,
-      boolean createStatTable)
+      boolean ensureStatTable, boolean createStatTable)
       throws IOException {
     // add the right keys to the primary table
     primaryTable.setValue(TABLE_STATS_ENABLED_DESC_KEY, "true");
     CleanupStatistics.addToTable(primaryTable);
+
+    if (!ensureStatTable) {
+      return;
+    }
 
     // ensure that the stats table is setup correctly
     boolean exists = admin.tableExists(STATS_TABLE_NAME);

@@ -42,7 +42,7 @@ public class TestSetupTable {
   public void testCreatesStatTable() throws Exception {
     HTableDescriptor primary = StatsTestUtil.getValidPrimaryTableDescriptor();
     HBaseAdmin admin = UTIL.getHBaseAdmin();
-    SetupTableUtil.setupTable(admin, primary, true);
+    SetupTableUtil.setupTable(admin, primary, true, true);
 
     assertTrue("Statistics table didn't get created!", admin.tableExists(Constants.STATS_TABLE_NAME_BYTES));
     // make sure it it is a valid table
