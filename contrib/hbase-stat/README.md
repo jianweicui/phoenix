@@ -63,6 +63,32 @@ To use it, you simply do the same as above, but ensure that the "ensureStatsTabl
     SetupTableUtil.setupTable(admin, primary, true /* this flag! */, false);
 ```
 
+### Reading Statistics
+
+Since statistics are kept in a single HTable, you could go any manually read them. However, each statistic could potentially have its own serialization and layout. Therefore, its recommended to the the StatisticReader to read a StatisticTable. Generally, all you will need to provide the StatisticReader is the type of statistic (Point or Histogram), name of the statistic and the underlying table. For instance, to read a histogram statistic "histo" for all the regions (and all the column families) of a table, you would do:
+
+```java
+	StatisticsTable stats = …
+	StatiticReader reader = new StatisticReader(stats, new HistogramStatisticDeserializer(), "histo");
+	reader.read()
+```
+
+However, this is a bit of a pain as each statistic will have its own name and type. Therefore, the standard convention is for each StatisticTracker to provide a getStatisticReader(StatisticTable) method to read that statistic from the table. For instance, to read the EqualWidthHistogramStatistic, all you need to do is:
+
+```java
+	StatisticsTable stats = …
+	StatiticReader reader = EqualWidthHistogramStatistic.getStatisticsReader(stats);
+	reader.read();
+```
+
+Some statistics are a little more complicated in the way they store their information, for instance using different column qualifiers at the same time to store different parts of the key. Generally, these should provide their own mechanisms to rebuild a stat from the serialized information. For instance, MinMaxKey provides an interpret method:
+
+```java
+    StatisticsTable stats = …
+    StatisticReader<StatisticValue> reader = MinMaxKey.getStatistcReader(stats);
+    List<MinMaxStat> results = MinMaxKey.interpret(reader.read());
+```
+
 
 ### Statistics Table Schema
 ===========================
@@ -107,3 +133,11 @@ To build a jar
     $ mvn clean package
 
 and then look in the target/ directory for the build jar
+
+## Roadmap / TODOs
+==================
+ - Switch statistic cleanup to use a coprocessor based delete
+ 	- we want to delete an entire prefix, but that first requires doing a scan and then deleting everything back from the scan
+ 	
+ - Enable more fine-grained writing of statistics so different serialization mechanisms can be inserted.
+ 	- most of the plumbing is already there (StatisticReader/Writer), but need to work it into the cleaner mechanisms

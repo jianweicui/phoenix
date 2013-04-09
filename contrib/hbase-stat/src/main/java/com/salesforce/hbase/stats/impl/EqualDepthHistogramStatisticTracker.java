@@ -30,10 +30,11 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.salesforce.hbase.stats.BaseStatistic;
 import com.salesforce.hbase.stats.HistogramStatisticValue;
+import com.salesforce.hbase.stats.StatisticReader;
 import com.salesforce.hbase.stats.StatisticTracker;
 import com.salesforce.hbase.stats.StatisticValue;
-import com.salesforce.hbase.stats.serialization.IndividualStatisticReader;
-import com.salesforce.hbase.stats.serialization.StatisticReader;
+import com.salesforce.hbase.stats.StatisticsTable;
+import com.salesforce.hbase.stats.serialization.HistogramStatisticReader;
 
 /**
  * {@link StatisticTracker} that keeps track of an equal depth histogram.
@@ -62,12 +63,12 @@ public class EqualDepthHistogramStatisticTracker extends BaseStatistic {
 
   /**
    * Get a reader for the statistic
-   * @param primary table for which you want to read the stats
+   * @param stats statistics table from which you want to read the stats
    * @return a {@link StatisticReader} to get the raw Histogram stats.
    */
-  public static StatisticReader<HistogramStatisticValue> getStatistcReader(HTableDescriptor primary) {
-    return new StatisticReader<HistogramStatisticValue>(
-        new IndividualStatisticReader.HistogramStatisticReader(), NAME);
+  public static StatisticReader<HistogramStatisticValue> getStatistcReader(StatisticsTable stats) {
+    return new StatisticReader<HistogramStatisticValue>(stats,
+        new HistogramStatisticReader(), NAME);
   }
 
   @Override

@@ -11,7 +11,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn;
 import com.salesforce.hbase.stats.impl.EqualDepthHistogramStatisticTracker;
-import com.salesforce.hbase.stats.serialization.StatisticReader;
 import com.salesforce.hbase.stats.util.Constants;
 import com.salesforce.hbase.stats.util.StatsTestUtil;
 
@@ -43,8 +42,9 @@ public class TestEqualWidthHistogramOnTable extends TestTrackerImpl {
     StatisticsTable table = new StatisticsTable(UTIL.getConfiguration(), primary);
 
     // now get a custom reader to interpret the results
-    StatisticReader<HistogramStatisticValue> reader = EqualDepthHistogramStatisticTracker.getStatistcReader(primary);
-    List<ColumnFamilyStatistic<HistogramStatisticValue>> stats = table.read(reader);
+    StatisticReader<HistogramStatisticValue> reader =
+        EqualDepthHistogramStatisticTracker.getStatistcReader(table);
+    List<ColumnFamilyStatistic<HistogramStatisticValue>> stats = reader.read();
 
     // should only have a single column family
     assertEquals("More than one column family has statistics!", 1, stats.size());

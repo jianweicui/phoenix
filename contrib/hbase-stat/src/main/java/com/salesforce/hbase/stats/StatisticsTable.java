@@ -19,7 +19,6 @@ package com.salesforce.hbase.stats;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +31,6 @@ import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
@@ -40,10 +38,8 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
-import org.apache.hadoop.hbase.util.Bytes;
 
 import com.salesforce.hbase.stats.serialization.IndividualStatisticWriter;
-import com.salesforce.hbase.stats.serialization.StatisticReader;
 import com.salesforce.hbase.stats.util.Constants;
 
 
@@ -58,9 +54,6 @@ import com.salesforce.hbase.stats.util.Constants;
 public class StatisticsTable implements Closeable {
 
   private static final Log LOG = LogFactory.getLog(StatisticsTable.class);
-  // by default, we only return the latest version of a statistc
-  private static final int DEFAULT_VERSIONS = 1;
-
   /** Map of the currently open statistics tables */
   private static final Map<String, StatisticsTable> tableMap = new HashMap<String, StatisticsTable>();
 
@@ -80,8 +73,8 @@ public class StatisticsTable implements Closeable {
     return table;
   }
 
-  private HTableInterface target;
-  private byte[] sourceTableName;
+  private final HTableInterface target;
+  private final byte[] sourceTableName;
 
   private StatisticsTable(HTableInterface target) {
     this.target = target;
@@ -170,72 +163,10 @@ public class StatisticsTable implements Closeable {
     target.flushCommits();
   }
 
-  public <S extends StatisticValue> List<ColumnFamilyStatistic<S>> read(StatisticReader<S> reader)
-      throws IOException {
-    return read(reader, DEFAULT_VERSIONS);
-  }
-
-  public <S extends StatisticValue> List<ColumnFamilyStatistic<S>> read(StatisticReader<S> reader,
-      int versions) throws IOException {
-    byte[] scanPrefix = reader.getRowKey(sourceTableName);
-    LOG.info("Reading for prefix: " + Bytes.toString(scanPrefix));
-    return getResults(target, scanPrefix, reader, versions);
-  }
-
-  public <S extends StatisticValue> List<ColumnFamilyStatistic<S>> read(StatisticReader<S> reader,
-      byte[] region) throws IOException {
-    return read(reader, region, DEFAULT_VERSIONS);
-  }
-
-  public <S extends StatisticValue> List<ColumnFamilyStatistic<S>> read(StatisticReader<S> reader,
-      byte[] region, int versions) throws IOException {
-    byte[] scanPrefix = reader.getRowKey(sourceTableName, region);
-    LOG.info("Reading for prefix: " + Bytes.toString(scanPrefix));
-    return getResults(target, scanPrefix, reader, versions);
-  }
-
-  public <S extends StatisticValue> ColumnFamilyStatistic<S> read(byte[] region, byte[] column,
-      StatisticReader<S> reader) throws IOException {
-    return read(region, column, reader, DEFAULT_VERSIONS);
-  }
-
-  public <S extends StatisticValue> ColumnFamilyStatistic<S> read(byte[] region, byte[] column,
-      StatisticReader<S> reader, int versions) throws IOException {
-    byte[] row = reader.getRowKey(sourceTableName, region, column);
-    Get g = new Get(row);
-    g.setMaxVersions(versions);
-    Result r = target.get(g);
-    return reader.deserialize(r);
-  }
-
-  /**
-   * Read the latest version of the statistic from the pr
-   * @param t
-   * @param scan
-   * @return
-   * @throws IOException
-   */
-  private <S extends StatisticValue> List<ColumnFamilyStatistic<S>> getResults(HTableInterface t,
-      byte[] prefix,
- StatisticReader<S> reader, int versions) throws IOException {
-    Scan scan = new Scan(prefix);
-    scan.addFamily(Constants.STATS_DATA_COLUMN_FAMILY);
-    scan.setFilter(new PrefixFilter(prefix));
-    // we only return the latest version of the statistic
-    scan.setMaxVersions(versions);
-    ResultScanner scanner = t.getScanner(scan);
-    List<ColumnFamilyStatistic<S>> stats = new ArrayList<ColumnFamilyStatistic<S>>();
-    for (Result r : scanner) {
-      LOG.info("Got result:" + r);
-      stats.add(reader.deserialize(r));
-    }
-    return stats;
-  }
-
   /**
    * @return the underlying {@link HTableInterface} to which this table is writing
    */
-  public HTableInterface getTable() {
+  HTableInterface getUnderlyingTable() {
     return target;
   }
 }

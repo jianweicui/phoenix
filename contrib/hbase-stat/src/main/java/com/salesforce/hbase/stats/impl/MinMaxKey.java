@@ -20,9 +20,10 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.salesforce.hbase.stats.BaseStatistic;
 import com.salesforce.hbase.stats.ColumnFamilyStatistic;
+import com.salesforce.hbase.stats.StatisticReader;
 import com.salesforce.hbase.stats.StatisticValue;
-import com.salesforce.hbase.stats.serialization.IndividualStatisticReader;
-import com.salesforce.hbase.stats.serialization.StatisticReader;
+import com.salesforce.hbase.stats.StatisticsTable;
+import com.salesforce.hbase.stats.serialization.PointStatisticReader;
 
 /**
  * Coprocessor that just keeps track of the min/max key on a per-column family basis.
@@ -74,18 +75,19 @@ public class MinMaxKey extends BaseStatistic {
 
   /**
    * Find a reader for the the min/max key based on the type of serialization of the key.
-   * @param primary table for which you want to read the stats
+   * @param stats table from which you want to read the stats
    * @return a {@link StatisticReader} to get the raw Min/Max stats. Use {@link #interpret(List)} to
    *         get a list of the most recent min/max values on a per-column, per-region basis.
    */
-  public static StatisticReader<StatisticValue> getStatistcReader(HTableDescriptor primary) {
-    return new StatisticReader<StatisticValue>(new IndividualStatisticReader.PointStatisticReader(), NAME);
+  public static StatisticReader<StatisticValue> getStatistcReader(StatisticsTable stats) {
+    return new StatisticReader<StatisticValue>(stats,
+        new PointStatisticReader(), NAME);
   }
 
   /**
-   * Combine the results from {@link #getStatistcReader(HTableDescriptor)} into {@link MinMaxStat}
+   * Combine the results from {@link #getStatistcReader(StatisticsTable)} into {@link MinMaxStat}
    * results for easy digestion
-   * @param stat statistics from {@link #getStatistcReader(HTableDescriptor)}.
+   * @param stat statistics from {@link #getStatistcReader(StatisticsTable)}.
    * @return the min/max per column family per region
    */
   public static List<MinMaxStat> interpret(List<ColumnFamilyStatistic<StatisticValue>> stat) {

@@ -11,7 +11,6 @@ import org.apache.hadoop.hbase.client.HTable;
 
 import com.salesforce.hbase.stats.impl.MinMaxKey;
 import com.salesforce.hbase.stats.impl.MinMaxKey.MinMaxStat;
-import com.salesforce.hbase.stats.serialization.StatisticReader;
 import com.salesforce.hbase.stats.util.Constants;
 import com.salesforce.hbase.stats.util.StatsTestUtil;
 
@@ -37,9 +36,9 @@ public class TestMinMaxKeyStats extends TestTrackerImpl {
 
     // then do a read with the actual statistics
     // we know we are going to collect MinMaxKey so reading ensures we are collecting correctly
-    StatisticReader<StatisticValue> reader = MinMaxKey.getStatistcReader(primary);
     StatisticsTable statTable = new StatisticsTable(UTIL.getConfiguration(), primary);
-    List<MinMaxStat> results = MinMaxKey.interpret(statTable.read(reader));
+    StatisticReader<StatisticValue> reader = MinMaxKey.getStatistcReader(statTable);
+    List<MinMaxStat> results = MinMaxKey.interpret(reader.read());
     assertEquals("Unexpected number of min/max results!", 1, results.size());
     assertArrayEquals("Unexpected number of min result!", new byte[] { 'a', 'a', 'a' },
       results.get(0).min);

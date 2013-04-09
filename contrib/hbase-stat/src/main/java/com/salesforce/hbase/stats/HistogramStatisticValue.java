@@ -21,6 +21,7 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn;
 import com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns;
+import com.salesforce.hbase.stats.serialization.HistogramStatisticReader;
 
 /**
  * {@link StatisticValue} whose value is actually a histogram of data.
@@ -50,7 +51,7 @@ public class HistogramStatisticValue extends StatisticValue {
 
   /**
    * Build a statistic value - should only be used by the
-   * {@link com.salesforce.hbase.stats.serialization.IndividualStatisticReader.HistogramStatisticReader}
+   * {@link com.salesforce.hbase.stats.serialization.HistogramStatisticReader}
    * .
    * @param value statistic instance to reference - no data is copied
    * @throws InvalidProtocolBufferException if the data in the {@link StatisticValue} is not a
