@@ -25,7 +25,7 @@
  * BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  * for the specific language governing permissions and limitations under the License.
  */
-package org.apache.hadoop.hbase.statistics;
+package com.salesforce.hbase.stats;
 
 import org.apache.hadoop.hbase.util.Bytes;
 

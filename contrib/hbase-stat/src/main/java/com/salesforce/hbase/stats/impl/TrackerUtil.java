@@ -20,7 +20,8 @@ package com.salesforce.hbase.stats.impl;
 import java.util.Arrays;
 
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.statistics.StatisticTracker;
+
+import com.salesforce.hbase.stats.StatisticTracker;
 
 /**
  * Utilities for {@link StatisticTracker}s.

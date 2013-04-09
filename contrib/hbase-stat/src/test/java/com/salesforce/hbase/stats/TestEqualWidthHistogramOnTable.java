@@ -7,14 +7,11 @@ import java.util.List;
 
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.statistics.ColumnFamilyStatistic;
-import org.apache.hadoop.hbase.statistics.HistogramStatisticValue;
-import org.apache.hadoop.hbase.statistics.StatisticsTable;
-import org.apache.hadoop.hbase.statistics.serialization.StatisticReader;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn;
 import com.salesforce.hbase.stats.impl.EqualDepthHistogramStatisticTracker;
+import com.salesforce.hbase.stats.serialization.StatisticReader;
 import com.salesforce.hbase.stats.util.Constants;
 import com.salesforce.hbase.stats.util.StatsTestUtil;
 

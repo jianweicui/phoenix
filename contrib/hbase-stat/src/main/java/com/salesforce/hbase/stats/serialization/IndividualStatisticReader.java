@@ -15,19 +15,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase.statistics.serialization;
+package com.salesforce.hbase.stats.serialization;
 
 import java.io.IOException;
 import java.util.Arrays;
 
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.statistics.ColumnFamilyStatistic;
-import org.apache.hadoop.hbase.statistics.HistogramStatisticValue;
-import org.apache.hadoop.hbase.statistics.StatisticValue;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.salesforce.hbase.stats.ColumnFamilyStatistic;
+import com.salesforce.hbase.stats.HistogramStatisticValue;
+import com.salesforce.hbase.stats.StatisticValue;
 
 /**
  * Deserializer for a {@link StatisticValue} from the raw {@link Result}. This is the complement

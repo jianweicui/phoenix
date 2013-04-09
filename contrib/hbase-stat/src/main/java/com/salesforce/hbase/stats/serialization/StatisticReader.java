@@ -15,14 +15,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase.statistics.serialization;
+package com.salesforce.hbase.stats.serialization;
 
 import java.io.IOException;
 
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.statistics.ColumnFamilyStatistic;
-import org.apache.hadoop.hbase.statistics.StatisticValue;
-import org.apache.hadoop.hbase.statistics.StatisticsTable;
+
+import com.salesforce.hbase.stats.ColumnFamilyStatistic;
+import com.salesforce.hbase.stats.StatisticValue;
+import com.salesforce.hbase.stats.StatisticsTable;
 
 /**
  * Read a statistic from a {@link StatisticsTable}. This is an abstraction around the underlying

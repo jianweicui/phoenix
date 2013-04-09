@@ -12,8 +12,6 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
 import org.apache.hadoop.hbase.regionserver.HRegion;
-import org.apache.hadoop.hbase.statistics.HistogramStatisticValue;
-import org.apache.hadoop.hbase.statistics.StatisticValue;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 import org.mockito.Mockito;

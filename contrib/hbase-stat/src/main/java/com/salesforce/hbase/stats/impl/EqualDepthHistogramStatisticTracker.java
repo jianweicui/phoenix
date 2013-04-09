@@ -26,14 +26,14 @@ import org.apache.hadoop.hbase.Coprocessor;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.statistics.HistogramStatisticValue;
-import org.apache.hadoop.hbase.statistics.StatisticTracker;
-import org.apache.hadoop.hbase.statistics.StatisticValue;
-import org.apache.hadoop.hbase.statistics.serialization.IndividualStatisticReader;
-import org.apache.hadoop.hbase.statistics.serialization.StatisticReader;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.salesforce.hbase.stats.BaseStatistic;
+import com.salesforce.hbase.stats.HistogramStatisticValue;
+import com.salesforce.hbase.stats.StatisticTracker;
+import com.salesforce.hbase.stats.StatisticValue;
+import com.salesforce.hbase.stats.serialization.IndividualStatisticReader;
+import com.salesforce.hbase.stats.serialization.StatisticReader;
 
 /**
  * {@link StatisticTracker} that keeps track of an equal depth histogram.

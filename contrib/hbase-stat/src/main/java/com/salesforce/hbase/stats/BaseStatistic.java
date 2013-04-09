@@ -25,8 +25,6 @@ import org.apache.hadoop.hbase.regionserver.KeyValueScanner;
 import org.apache.hadoop.hbase.regionserver.ScanType;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.regionserver.StoreScanner;
-import org.apache.hadoop.hbase.statistics.StatisticTracker;
-import org.apache.hadoop.hbase.statistics.StatisticsTable;
 import org.apache.hadoop.hbase.util.Bytes;
 
 

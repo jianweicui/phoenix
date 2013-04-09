@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase.statistics;
+package com.salesforce.hbase.stats;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -40,10 +40,10 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
-import org.apache.hadoop.hbase.statistics.serialization.IndividualStatisticWriter;
-import org.apache.hadoop.hbase.statistics.serialization.StatisticReader;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.salesforce.hbase.stats.serialization.IndividualStatisticWriter;
+import com.salesforce.hbase.stats.serialization.StatisticReader;
 import com.salesforce.hbase.stats.util.Constants;
 
 

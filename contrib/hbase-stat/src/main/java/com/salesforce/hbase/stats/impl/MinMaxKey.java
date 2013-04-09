@@ -16,13 +16,13 @@ import java.util.List;
 
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.statistics.ColumnFamilyStatistic;
-import org.apache.hadoop.hbase.statistics.StatisticValue;
-import org.apache.hadoop.hbase.statistics.serialization.IndividualStatisticReader;
-import org.apache.hadoop.hbase.statistics.serialization.StatisticReader;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.salesforce.hbase.stats.BaseStatistic;
+import com.salesforce.hbase.stats.ColumnFamilyStatistic;
+import com.salesforce.hbase.stats.StatisticValue;
+import com.salesforce.hbase.stats.serialization.IndividualStatisticReader;
+import com.salesforce.hbase.stats.serialization.StatisticReader;
 
 /**
  * Coprocessor that just keeps track of the min/max key on a per-column family basis.

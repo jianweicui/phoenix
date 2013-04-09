@@ -8,13 +8,10 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
-import org.apache.hadoop.hbase.statistics.StatisticTracker;
-import org.apache.hadoop.hbase.statistics.StatisticValue;
-import org.apache.hadoop.hbase.statistics.StatisticsTable;
-import org.apache.hadoop.hbase.statistics.serialization.IndividualStatisticWriter;
 import org.apache.hadoop.io.MultipleIOException;
 
 import com.google.common.collect.Lists;
+import com.salesforce.hbase.stats.serialization.IndividualStatisticWriter;
 
 public class StatScanner implements InternalScanner {
   private static final Log LOG = LogFactory.getLog(StatScanner.class);

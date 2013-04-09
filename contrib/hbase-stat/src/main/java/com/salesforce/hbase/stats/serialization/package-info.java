@@ -1,4 +1,4 @@
-package org.apache.hadoop.hbase.statistics.serialization;
+package com.salesforce.hbase.stats.serialization;
 
 
 /**

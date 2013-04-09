@@ -30,8 +30,8 @@ import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.regionserver.KeyValueScanner;
 import org.apache.hadoop.hbase.regionserver.ScanType;
 import org.apache.hadoop.hbase.regionserver.Store;
-import org.apache.hadoop.hbase.statistics.StatisticsTable;
 
+import com.salesforce.hbase.stats.StatisticsTable;
 import com.salesforce.hbase.stats.util.SetupTableUtil;
 
 /**

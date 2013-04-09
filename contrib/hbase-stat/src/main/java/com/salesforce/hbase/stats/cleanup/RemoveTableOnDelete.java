@@ -23,9 +23,9 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.coprocessor.BaseMasterObserver;
 import org.apache.hadoop.hbase.coprocessor.MasterCoprocessorEnvironment;
 import org.apache.hadoop.hbase.coprocessor.ObserverContext;
-import org.apache.hadoop.hbase.statistics.StatisticsTable;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.salesforce.hbase.stats.StatisticsTable;
 import com.salesforce.hbase.stats.util.SetupTableUtil;
 
 public class RemoveTableOnDelete extends BaseMasterObserver {

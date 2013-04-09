@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase.statistics;
+package com.salesforce.hbase.stats;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -50,7 +50,7 @@ public class HistogramStatisticValue extends StatisticValue {
 
   /**
    * Build a statistic value - should only be used by the
-   * {@link org.apache.hadoop.hbase.statistics.serialization.IndividualStatisticReader.HistogramStatisticReader}
+   * {@link com.salesforce.hbase.stats.serialization.IndividualStatisticReader.HistogramStatisticReader}
    * .
    * @param value statistic instance to reference - no data is copied
    * @throws InvalidProtocolBufferException if the data in the {@link StatisticValue} is not a

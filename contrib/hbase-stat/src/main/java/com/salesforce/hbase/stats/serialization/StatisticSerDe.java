@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase.statistics.serialization;
+package com.salesforce.hbase.stats.serialization;
 
 
 import org.apache.hadoop.hbase.util.Bytes;

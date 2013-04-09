@@ -8,12 +8,10 @@ import java.util.List;
 
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.statistics.StatisticValue;
-import org.apache.hadoop.hbase.statistics.StatisticsTable;
-import org.apache.hadoop.hbase.statistics.serialization.StatisticReader;
 
 import com.salesforce.hbase.stats.impl.MinMaxKey;
 import com.salesforce.hbase.stats.impl.MinMaxKey.MinMaxStat;
+import com.salesforce.hbase.stats.serialization.StatisticReader;
 import com.salesforce.hbase.stats.util.Constants;
 import com.salesforce.hbase.stats.util.StatsTestUtil;
 

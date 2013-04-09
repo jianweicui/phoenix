@@ -15,11 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase.statistics.serialization;
+package com.salesforce.hbase.stats.serialization;
 
 import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.statistics.StatisticValue;
 
+import com.salesforce.hbase.stats.StatisticValue;
 import com.salesforce.hbase.stats.util.Constants;
 
 /**
