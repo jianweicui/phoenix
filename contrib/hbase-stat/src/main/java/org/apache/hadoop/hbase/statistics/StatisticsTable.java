@@ -68,7 +68,7 @@ public class StatisticsTable implements Closeable {
    * @param env Environment wherein the coprocessor is attempting to update the stats table.
    * @param primaryTableName name of the primary table on which we should collect stats
    * @return the {@link StatisticsTable} for the given primary table.
-   * @throws IOException
+   * @throws IOException if the table cannot be created due to an underlying HTable creation error
    */
   public synchronized static StatisticsTable getStatisticsTableForCoprocessor(
       CoprocessorEnvironment env, String primaryTableName) throws IOException {

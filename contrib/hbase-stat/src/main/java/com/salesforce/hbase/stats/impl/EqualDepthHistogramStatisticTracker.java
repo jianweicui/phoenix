@@ -31,7 +31,6 @@ import org.apache.hadoop.hbase.statistics.StatisticTracker;
 import org.apache.hadoop.hbase.statistics.StatisticValue;
 import org.apache.hadoop.hbase.statistics.serialization.IndividualStatisticReader;
 import org.apache.hadoop.hbase.statistics.serialization.StatisticReader;
-import org.apache.hadoop.hbase.statistics.serialization.IndividualStatisticReader.HistogramStatisticReader;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.salesforce.hbase.stats.BaseStatistic;

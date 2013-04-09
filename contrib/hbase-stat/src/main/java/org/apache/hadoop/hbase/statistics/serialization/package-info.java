@@ -1,12 +1,5 @@
 package org.apache.hadoop.hbase.statistics.serialization;
 
-import java.util.List;
-
-import org.apache.hadoop.hbase.statistics.StatisticValue;
-import org.apache.hadoop.hbase.statistics.StatisticsTable;
-
-import com.salesforce.hbase.stats.impl.MinMaxKey;
-import com.salesforce.hbase.stats.impl.MinMaxKey.MinMaxStat;
 
 /**
 Overview of Statistics Serialization

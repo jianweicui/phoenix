@@ -20,6 +20,7 @@ package com.salesforce.hbase.stats.util;
 import java.io.IOException;
 
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -43,6 +44,9 @@ public class StatsTestUtil {
 
   /**
    * Count the total number of rows in the table
+   * @param table the table to count
+   * @return the number of {@link KeyValue}s in the table
+   * @throws IOException if the table has an error while reading
    */
   public static int getKeyValueCount(HTable table) throws IOException {
     Scan scan = new Scan();

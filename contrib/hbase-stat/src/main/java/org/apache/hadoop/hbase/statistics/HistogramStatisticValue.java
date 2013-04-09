@@ -17,9 +17,6 @@
  */
 package org.apache.hadoop.hbase.statistics;
 
-import org.apache.hadoop.hbase.statistics.serialization.IndividualStatisticReader;
-import org.apache.hadoop.hbase.statistics.serialization.IndividualStatisticReader.HistogramStatisticReader;
-
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn;
@@ -52,7 +49,9 @@ public class HistogramStatisticValue extends StatisticValue {
   private HistogramColumns.Builder builder = HistogramColumns.newBuilder();
 
   /**
-   * Build a statistic value - should only be used by the {@link IndividualStatisticReader.HistogramStatisticReader}.
+   * Build a statistic value - should only be used by the
+   * {@link org.apache.hadoop.hbase.statistics.serialization.IndividualStatisticReader.HistogramStatisticReader}
+   * .
    * @param value statistic instance to reference - no data is copied
    * @throws InvalidProtocolBufferException if the data in the {@link StatisticValue} is not a
    *           histogram

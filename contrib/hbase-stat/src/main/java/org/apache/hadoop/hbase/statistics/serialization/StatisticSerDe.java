@@ -18,7 +18,6 @@
 package org.apache.hadoop.hbase.statistics.serialization;
 
 
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.Bytes;
 
 
@@ -26,8 +25,6 @@ import org.apache.hadoop.hbase.util.Bytes;
  * Simple utility class for managing multiple key parts of the statistic
  */
 public class StatisticSerDe {
-
-  // XXX - this where we would use orderly to get the sorting consistent
 
   /** Number of parts in our complex key */
   protected static final int NUM_KEY_PARTS = 4;

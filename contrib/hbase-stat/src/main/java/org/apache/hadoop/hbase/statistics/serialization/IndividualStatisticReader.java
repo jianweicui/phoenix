@@ -25,7 +25,6 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.statistics.ColumnFamilyStatistic;
 import org.apache.hadoop.hbase.statistics.HistogramStatisticValue;
 import org.apache.hadoop.hbase.statistics.StatisticValue;
-import org.apache.hadoop.hbase.statistics.serialization.IndividualStatisticReader.PointStatisticReader;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.protobuf.InvalidProtocolBufferException;

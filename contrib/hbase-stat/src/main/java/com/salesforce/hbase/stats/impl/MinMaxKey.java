@@ -114,10 +114,10 @@ public class MinMaxKey extends BaseStatistic {
     public final byte[] min;
 
     /**
-     * @param region
-     * @param columnfamily
-     * @param min
-     * @param max
+     * @param region region where the stat was obtained
+     * @param columnfamily column family for which the stat was calculated
+     * @param min the min key as a {@link StatisticValue}
+     * @param max the max key as a {@link StatisticValue}
      */
     public MinMaxStat(byte[] region, byte[] columnfamily, StatisticValue max, StatisticValue min) {
       this.region = region;
