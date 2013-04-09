@@ -133,7 +133,6 @@ public class StatisticReader<S extends StatisticValue> {
    * name, over a time range) then you will get all the versions, one per
    * {@link ColumnFamilyStatistic}, with the most recent being <i>first</i> in the
    * {@link ColumnFamilyStatistic#getValues()} list.
-   * @param reader reader to use when reading the table
    * @param region name of the region for which to get the stats
    * @param column name of the column family for which to get the stats
    * @param versions max number of statistic versions to read
