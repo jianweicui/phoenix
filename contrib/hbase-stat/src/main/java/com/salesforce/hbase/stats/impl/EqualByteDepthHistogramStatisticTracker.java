@@ -25,7 +25,7 @@ import com.salesforce.hbase.stats.serialization.HistogramStatisticReader;
  * This is different from a traditional histogram in that we just keep track of the key at every 'n'
  * bytes; another name for this is region "guide posts".
  */
-public class EqualDepthHistogramStatisticTracker extends BaseStatistic {
+public class EqualByteDepthHistogramStatisticTracker extends BaseStatistic {
 
   public static final String BYTE_DEPTH_CONF_KEY = "com.salesforce.guidepost.width";
 
@@ -35,12 +35,11 @@ public class EqualDepthHistogramStatisticTracker extends BaseStatistic {
 
   private long guidepostDepth;
   private long byteCount = 0;
-  private int keyCount;
   private HistogramStatisticValue histogram;
 
   public static void addToTable(HTableDescriptor desc, long depth) throws IOException {
     Map<String, String> props = Collections.singletonMap(BYTE_DEPTH_CONF_KEY, Long.toString(depth));
-    desc.addCoprocessor(EqualDepthHistogramStatisticTracker.class.getName(), null,
+    desc.addCoprocessor(EqualByteDepthHistogramStatisticTracker.class.getName(), null,
       Coprocessor.PRIORITY_USER, props);
   }
 
@@ -64,33 +63,32 @@ public class EqualDepthHistogramStatisticTracker extends BaseStatistic {
 
   private HistogramStatisticValue newHistogram() {
     return new HistogramStatisticValue(NAME,
-        Bytes.toBytes("equal_width_histogram_" + guidepostDepth + "bytes"));
+ Bytes.toBytes("equal_width_histogram_"
+        + guidepostDepth + "bytes"), guidepostDepth);
   }
 
   @Override
   public List<StatisticValue> getCurrentStats() {
     return Collections.singletonList((StatisticValue) histogram);
+
   }
 
   @Override
   public void clear() {
     this.histogram = newHistogram();
     this.byteCount = 0;
-    this.keyCount = 0;
   }
 
   @Override
   public void updateStatistic(KeyValue kv) {
     byteCount += kv.getBuffer().length;
-    keyCount++;
     // if we are at the next guide-post, add it to the histogram
     if (byteCount >= guidepostDepth) {
       // update the histogram
-      this.histogram.addColumn(keyCount, kv.getBuffer());
+      this.histogram.addColumn(kv.getBuffer());
 
       //reset the count for the next key
       byteCount = 0;
-      keyCount = 0;
     }
   }
 }

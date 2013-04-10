@@ -5,12 +5,10 @@ option java_outer_classname = "StatisticProtos";
 option java_generate_equals_and_hash = true;
 option optimize_for = SPEED;
 
-message HistogramColumns {
-	repeated HistogramColumn columns = 1;
-	optional int32 columnWidth = 2;
-}
-
-message HistogramColumn{
-	required bytes value = 1;
-	optional int32 width = 2;
+message Histogram{
+	//all histograms have either a fixed depth or width
+	required int64 depthOrWidth = 1;
+	// fixed depth will have different values as row keys
+	//fixed width will just have counts
+	repeated bytes value = 2;
 }

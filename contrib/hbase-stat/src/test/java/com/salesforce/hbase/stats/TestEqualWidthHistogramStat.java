@@ -16,9 +16,10 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn;
-import com.salesforce.hbase.stats.impl.EqualDepthHistogramStatisticTracker;
+import com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram;
+import com.salesforce.hbase.stats.impl.EqualByteDepthHistogramStatisticTracker;
 
 /**
  * Simple unit test of equal width histograms. Doesn't test against a full cluster, but rather is
@@ -34,7 +35,7 @@ public class TestEqualWidthHistogramStat {
 
   @Test
   public void testSimpleStat() throws IOException {
-    EqualDepthHistogramStatisticTracker tracker = new EqualDepthHistogramStatisticTracker();
+    EqualByteDepthHistogramStatisticTracker tracker = new EqualByteDepthHistogramStatisticTracker();
     // unfortunately, need to mock a lot here
     RegionCoprocessorEnvironment env = Mockito.mock(RegionCoprocessorEnvironment.class);
     HRegion mockRegion = Mockito.mock(HRegion.class);
@@ -48,7 +49,7 @@ public class TestEqualWidthHistogramStat {
     // setup the actual configuration that we care about
     Configuration conf = new Configuration(false);
     // setup our byte width == to [letter]zz
-    conf.setLong(EqualDepthHistogramStatisticTracker.BYTE_DEPTH_CONF_KEY, columnDepth);
+    conf.setLong(EqualByteDepthHistogramStatisticTracker.BYTE_DEPTH_CONF_KEY, columnDepth);
     Mockito.when(env.getConfiguration()).thenReturn(conf);
 
     // setup the tracker
@@ -67,7 +68,7 @@ public class TestEqualWidthHistogramStat {
    * @throws InvalidProtocolBufferException if protobufs are broken - should not be thrown since we
    *           are not serializing information
    */
-  private void loadAndVerifyTracker(EqualDepthHistogramStatisticTracker tracker)
+  private void loadAndVerifyTracker(EqualByteDepthHistogramStatisticTracker tracker)
       throws InvalidProtocolBufferException {
     // now feed the tracker a bunch of bytes
     KeyValue kv = new KeyValue();
@@ -87,16 +88,14 @@ public class TestEqualWidthHistogramStat {
     List<StatisticValue> stats = tracker.getCurrentStats();
     assertEquals("Got more than one histogram!", 1, stats.size());
     HistogramStatisticValue stat = (HistogramStatisticValue) stats.get(0);
-    List<HistogramColumn> columns = stat.getHistogram().getColumnsList();
-    assertEquals("Got an incorrect number of guideposts!", 26, columns.size());
+    Histogram histogram = stat.getHistogram();
+    assertEquals("Got an incorrect number of guideposts!", 26, histogram.getValueList().size());
 
     // make sure we got the correct guideposts
     byte counter = 'a';
-    for (HistogramColumn column : columns) {
-      assertEquals("Column width shouldn't vary for a equal-depth histogram", columnWidth,
-        column.getWidth());
+    for (ByteString column : histogram.getValueList()) {
       byte[] guidepost = new byte[] { counter, 'z', 'z' };
-      byte[] actual = column.getValue().toByteArray();
+      byte[] actual = column.toByteArray();
       assertArrayEquals(
         "Guidepost should be:" + Bytes.toString(guidepost) + " , but was: "
             + Bytes.toString(actual), guidepost, actual);

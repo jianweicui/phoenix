@@ -9,13 +9,14 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn;
-import com.salesforce.hbase.stats.impl.EqualDepthHistogramStatisticTracker;
+import com.google.protobuf.ByteString;
+import com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram;
+import com.salesforce.hbase.stats.impl.EqualByteDepthHistogramStatisticTracker;
 import com.salesforce.hbase.stats.util.Constants;
 import com.salesforce.hbase.stats.util.StatsTestUtil;
 
 /**
- * A full, real table test of the the {@link EqualDepthHistogramStatisticTracker}. This is the
+ * A full, real table test of the the {@link EqualByteDepthHistogramStatisticTracker}. This is the
  * complement to {@link TestEqualWidthHistogramStat}.
  */
 public class TestEqualWidthHistogramOnTable extends TestTrackerImpl {
@@ -28,7 +29,7 @@ public class TestEqualWidthHistogramOnTable extends TestTrackerImpl {
 
   @Override
   protected void preparePrimaryTableDescriptor(HTableDescriptor primary) throws Exception {
-    EqualDepthHistogramStatisticTracker.addToTable(primary, columnDepth);
+    EqualByteDepthHistogramStatisticTracker.addToTable(primary, columnDepth);
   }
 
   @Override
@@ -43,24 +44,21 @@ public class TestEqualWidthHistogramOnTable extends TestTrackerImpl {
 
     // now get a custom reader to interpret the results
     StatisticReader<HistogramStatisticValue> reader =
-        EqualDepthHistogramStatisticTracker.getStatistcReader(table);
+        EqualByteDepthHistogramStatisticTracker.getStatistcReader(table);
     List<ColumnFamilyStatistic<HistogramStatisticValue>> stats = reader.read();
 
     // should only have a single column family
     assertEquals("More than one column family has statistics!", 1, stats.size());
     List<HistogramStatisticValue> values = stats.get(0).getValues();
     assertEquals("More than one histogram in the column family/region", 1, values.size());
-    HistogramStatisticValue value = values.get(0);
-    List<HistogramColumn> columns = value.getHistogram().getColumnsList();
-    assertEquals("Got the wrong number of columns in the equal-depth histogram", 26, columns.size());
+    Histogram histogram = values.get(0).getHistogram();
+    assertEquals("Got an incorrect number of guideposts!", 26, histogram.getValueList().size());
 
-    // make sure we have the expected guide posts
+    // make sure we got the correct guideposts
     byte counter = 'a';
-    for (HistogramColumn column : columns) {
-      assertEquals("Column width shouldn't vary for a equal-depth histogram", columnWidth,
-        column.getWidth());
+    for (ByteString column : histogram.getValueList()) {
       byte[] guidepost = new byte[] { counter, 'z', 'z' };
-      byte[] actual = column.getValue().toByteArray();
+      byte[] actual = column.toByteArray();
       assertArrayEquals(
         "Guidepost should be:" + Bytes.toString(guidepost) + " , but was: "
             + Bytes.toString(actual), guidepost, actual);

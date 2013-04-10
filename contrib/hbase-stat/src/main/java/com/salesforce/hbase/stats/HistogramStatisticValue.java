@@ -1,9 +1,10 @@
 package com.salesforce.hbase.stats;
 
+import org.apache.hadoop.hbase.util.Bytes;
+
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn;
-import com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns;
+import com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram;
 
 /**
  * {@link StatisticValue} whose value is actually a histogram of data.
@@ -29,8 +30,7 @@ import com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns;
  */
 public class HistogramStatisticValue extends StatisticValue {
 
-  private HistogramColumns.Builder builder = HistogramColumns.newBuilder();
-  private HistogramColumns columns;
+  private Histogram.Builder builder = Histogram.newBuilder();
 
   /**
    * Build a statistic value - should only be used by the
@@ -43,73 +43,58 @@ public class HistogramStatisticValue extends StatisticValue {
   public HistogramStatisticValue(StatisticValue value) throws InvalidProtocolBufferException {
     super(value.name, value.info, value.value);
     // reset the builder based on the data
-    builder = HistogramColumns.parseFrom(value.value).toBuilder();
+    builder = Histogram.parseFrom(value.value).toBuilder();
   }
 
   /**
-   * Build a fixed-depth histogram. All histogram columns should be added via
-   * {@link #addColumn(int, byte[])} to ensure we know the width of each column.
+   * Build a fixed-width/depth histogram.
    * @param name name of the statistic
    * @param info general info about the statistic
+   * @param widthOrDepth width of all the columns
    */
-  public HistogramStatisticValue(byte[] name, byte[] info) {
+  public HistogramStatisticValue(byte[] name, byte[] info, long widthOrDepth) {
     super(name, info, null);
+    this.builder.setDepthOrWidth(widthOrDepth);
   }
 
   /**
-   * Build a fixed-width histogram. All histogram columns should be added via
-   * {@link #addColumn(byte[])} as we know the width of each column
-   * @param name name of the statistic
-   * @param info general info about the statistic
-   * @param width width of all the columns
-   */
-  public HistogramStatisticValue(byte[] name, byte[] info, int width) {
-    super(name, info, null);
-    this.builder.setColumnWidth(width);
-  }
-
-  /**
-   * Add a column to this histogram - should only be used with fixed width histograms, where the
-   * width is specified in the constructor
+   * Add a new fixed-depth column to this histogram - we already know the depth of the column (it
+   * was specified in the constructor), so we just need to get the next key boundary.
    * @param value value of the next column - added to the end of the histogram
    */
   public void addColumn(byte[] value) {
-    builder.addColumns(HistogramColumn.newBuilder().setValue(ByteString.copyFrom(value)).build());
+    builder.addValue(ByteString.copyFrom(value));
   }
 
   /**
-   * Add a column with a width to this histogram - should only be used with fixed depth histograms,
-   * where the width is <b>not</b> specified in the constructor
-   * @param width width of the column in the histogram
-   * @param value value of the next column - added to the end of the histogram
+   * Add a new fixed-width column to the histogram. We already know the width of the column, so we
+   * only care about getting the count of the keys in that column
+   * @param count count of the keys in the column
    */
-  public void addColumn(int width, byte[] value) {
-    builder.addColumns(HistogramColumn.newBuilder().setValue(ByteString.copyFrom(value))
-        .setWidth(width).build());
+  public void addColumn(long count) {
+    builder.addValue(ByteString.copyFrom(Bytes.toBytes(count)));
   }
 
   /**
-   * Get the raw bytes for the histogram. Can be rebuilt using {@link #getHistogram(byte[])}
+   * Get the raw bytes for the histogram. Can be rebuilt using {@link #getHistogram(byte[])}. This
+   * is a single-use method - after calling any previous calls to {@link #addColumn} are ignored.
    */
   public byte[] getValue() {
-    return builder.build().toByteArray();
+    byte[] data = builder.build().toByteArray();
+    builder = Histogram.newBuilder();
+    return data;
   }
 
   /**
    * Get the underlying columns for the histogram. After calling this method, any futher updates to
-   * the histogram are not guarranteed to work correctly. However, you can continue to call this
-   * method as many times as desired, though it will continue to return <b>a reference to the
-   * original columns</b> every time.
+   * the histogram are not guarranteed to work correctly. original columns</b> every time.
    * @return a deserialized version of the histogram
    */
-  public synchronized HistogramColumns getHistogram() {
-    if (columns == null) {
-      columns = this.builder.build();
-    }
-    return columns;
+  public synchronized Histogram getHistogram() {
+    return this.builder.build();
   }
 
-  public static HistogramColumns getHistogram(byte[] raw) throws InvalidProtocolBufferException {
-    return HistogramColumns.parseFrom(raw);
+  public static Histogram getHistogram(byte[] raw) throws InvalidProtocolBufferException {
+    return Histogram.parseFrom(raw);
   }
 }

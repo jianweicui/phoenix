@@ -8,738 +8,81 @@ public final class StatisticProtos {
   public static void registerAllExtensions(
       com.google.protobuf.ExtensionRegistry registry) {
   }
-  public interface HistogramColumnsOrBuilder
+  public interface HistogramOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
     
-    // repeated .HistogramColumn columns = 1;
-    java.util.List<com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn> 
-        getColumnsList();
-    com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn getColumns(int index);
-    int getColumnsCount();
-    java.util.List<? extends com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumnOrBuilder> 
-        getColumnsOrBuilderList();
-    com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumnOrBuilder getColumnsOrBuilder(
-        int index);
+    // required int64 depthOrWidth = 1;
+    boolean hasDepthOrWidth();
+    long getDepthOrWidth();
     
-    // optional int32 columnWidth = 2;
-    boolean hasColumnWidth();
-    int getColumnWidth();
+    // repeated bytes value = 2;
+    java.util.List<com.google.protobuf.ByteString> getValueList();
+    int getValueCount();
+    com.google.protobuf.ByteString getValue(int index);
   }
-  public static final class HistogramColumns extends
+  public static final class Histogram extends
       com.google.protobuf.GeneratedMessage
-      implements HistogramColumnsOrBuilder {
-    // Use HistogramColumns.newBuilder() to construct.
-    private HistogramColumns(Builder builder) {
+      implements HistogramOrBuilder {
+    // Use Histogram.newBuilder() to construct.
+    private Histogram(Builder builder) {
       super(builder);
     }
-    private HistogramColumns(boolean noInit) {}
+    private Histogram(boolean noInit) {}
     
-    private static final HistogramColumns defaultInstance;
-    public static HistogramColumns getDefaultInstance() {
+    private static final Histogram defaultInstance;
+    public static Histogram getDefaultInstance() {
       return defaultInstance;
     }
     
-    public HistogramColumns getDefaultInstanceForType() {
+    public Histogram getDefaultInstanceForType() {
       return defaultInstance;
     }
     
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return com.salesforce.hbase.protobuf.generated.StatisticProtos.internal_static_HistogramColumns_descriptor;
+      return com.salesforce.hbase.protobuf.generated.StatisticProtos.internal_static_Histogram_descriptor;
     }
     
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return com.salesforce.hbase.protobuf.generated.StatisticProtos.internal_static_HistogramColumns_fieldAccessorTable;
+      return com.salesforce.hbase.protobuf.generated.StatisticProtos.internal_static_Histogram_fieldAccessorTable;
     }
     
     private int bitField0_;
-    // repeated .HistogramColumn columns = 1;
-    public static final int COLUMNS_FIELD_NUMBER = 1;
-    private java.util.List<com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn> columns_;
-    public java.util.List<com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn> getColumnsList() {
-      return columns_;
-    }
-    public java.util.List<? extends com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumnOrBuilder> 
-        getColumnsOrBuilderList() {
-      return columns_;
-    }
-    public int getColumnsCount() {
-      return columns_.size();
-    }
-    public com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn getColumns(int index) {
-      return columns_.get(index);
-    }
-    public com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumnOrBuilder getColumnsOrBuilder(
-        int index) {
-      return columns_.get(index);
-    }
-    
-    // optional int32 columnWidth = 2;
-    public static final int COLUMNWIDTH_FIELD_NUMBER = 2;
-    private int columnWidth_;
-    public boolean hasColumnWidth() {
+    // required int64 depthOrWidth = 1;
+    public static final int DEPTHORWIDTH_FIELD_NUMBER = 1;
+    private long depthOrWidth_;
+    public boolean hasDepthOrWidth() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
-    public int getColumnWidth() {
-      return columnWidth_;
+    public long getDepthOrWidth() {
+      return depthOrWidth_;
     }
     
-    private void initFields() {
-      columns_ = java.util.Collections.emptyList();
-      columnWidth_ = 0;
-    }
-    private byte memoizedIsInitialized = -1;
-    public final boolean isInitialized() {
-      byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-      
-      for (int i = 0; i < getColumnsCount(); i++) {
-        if (!getColumns(i).isInitialized()) {
-          memoizedIsInitialized = 0;
-          return false;
-        }
-      }
-      memoizedIsInitialized = 1;
-      return true;
-    }
-    
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
-      getSerializedSize();
-      for (int i = 0; i < columns_.size(); i++) {
-        output.writeMessage(1, columns_.get(i));
-      }
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        output.writeInt32(2, columnWidth_);
-      }
-      getUnknownFields().writeTo(output);
-    }
-    
-    private int memoizedSerializedSize = -1;
-    public int getSerializedSize() {
-      int size = memoizedSerializedSize;
-      if (size != -1) return size;
-    
-      size = 0;
-      for (int i = 0; i < columns_.size(); i++) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(1, columns_.get(i));
-      }
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeInt32Size(2, columnWidth_);
-      }
-      size += getUnknownFields().getSerializedSize();
-      memoizedSerializedSize = size;
-      return size;
-    }
-    
-    private static final long serialVersionUID = 0L;
-    @java.lang.Override
-    protected java.lang.Object writeReplace()
-        throws java.io.ObjectStreamException {
-      return super.writeReplace();
-    }
-    
-    @java.lang.Override
-    public boolean equals(final java.lang.Object obj) {
-      if (obj == this) {
-       return true;
-      }
-      if (!(obj instanceof com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns)) {
-        return super.equals(obj);
-      }
-      com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns other = (com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns) obj;
-      
-      boolean result = true;
-      result = result && getColumnsList()
-          .equals(other.getColumnsList());
-      result = result && (hasColumnWidth() == other.hasColumnWidth());
-      if (hasColumnWidth()) {
-        result = result && (getColumnWidth()
-            == other.getColumnWidth());
-      }
-      result = result &&
-          getUnknownFields().equals(other.getUnknownFields());
-      return result;
-    }
-    
-    @java.lang.Override
-    public int hashCode() {
-      int hash = 41;
-      hash = (19 * hash) + getDescriptorForType().hashCode();
-      if (getColumnsCount() > 0) {
-        hash = (37 * hash) + COLUMNS_FIELD_NUMBER;
-        hash = (53 * hash) + getColumnsList().hashCode();
-      }
-      if (hasColumnWidth()) {
-        hash = (37 * hash) + COLUMNWIDTH_FIELD_NUMBER;
-        hash = (53 * hash) + getColumnWidth();
-      }
-      hash = (29 * hash) + getUnknownFields().hashCode();
-      return hash;
-    }
-    
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns parseFrom(
-        com.google.protobuf.ByteString data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns parseFrom(
-        com.google.protobuf.ByteString data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns parseFrom(byte[] data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns parseDelimitedFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns parseFrom(
-        com.google.protobuf.CodedInputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    
-    public static Builder newBuilder() { return Builder.create(); }
-    public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns prototype) {
-      return newBuilder().mergeFrom(prototype);
-    }
-    public Builder toBuilder() { return newBuilder(this); }
-    
-    @java.lang.Override
-    protected Builder newBuilderForType(
-        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
-      Builder builder = new Builder(parent);
-      return builder;
-    }
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumnsOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return com.salesforce.hbase.protobuf.generated.StatisticProtos.internal_static_HistogramColumns_descriptor;
-      }
-      
-      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-          internalGetFieldAccessorTable() {
-        return com.salesforce.hbase.protobuf.generated.StatisticProtos.internal_static_HistogramColumns_fieldAccessorTable;
-      }
-      
-      // Construct using com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns.newBuilder()
-      private Builder() {
-        maybeForceBuilderInitialization();
-      }
-      
-      private Builder(BuilderParent parent) {
-        super(parent);
-        maybeForceBuilderInitialization();
-      }
-      private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
-          getColumnsFieldBuilder();
-        }
-      }
-      private static Builder create() {
-        return new Builder();
-      }
-      
-      public Builder clear() {
-        super.clear();
-        if (columnsBuilder_ == null) {
-          columns_ = java.util.Collections.emptyList();
-          bitField0_ = (bitField0_ & ~0x00000001);
-        } else {
-          columnsBuilder_.clear();
-        }
-        columnWidth_ = 0;
-        bitField0_ = (bitField0_ & ~0x00000002);
-        return this;
-      }
-      
-      public Builder clone() {
-        return create().mergeFrom(buildPartial());
-      }
-      
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns.getDescriptor();
-      }
-      
-      public com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns getDefaultInstanceForType() {
-        return com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns.getDefaultInstance();
-      }
-      
-      public com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns build() {
-        com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(result);
-        }
-        return result;
-      }
-      
-      private com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return result;
-      }
-      
-      public com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns buildPartial() {
-        com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns result = new com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns(this);
-        int from_bitField0_ = bitField0_;
-        int to_bitField0_ = 0;
-        if (columnsBuilder_ == null) {
-          if (((bitField0_ & 0x00000001) == 0x00000001)) {
-            columns_ = java.util.Collections.unmodifiableList(columns_);
-            bitField0_ = (bitField0_ & ~0x00000001);
-          }
-          result.columns_ = columns_;
-        } else {
-          result.columns_ = columnsBuilder_.build();
-        }
-        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
-          to_bitField0_ |= 0x00000001;
-        }
-        result.columnWidth_ = columnWidth_;
-        result.bitField0_ = to_bitField0_;
-        onBuilt();
-        return result;
-      }
-      
-      public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns) {
-          return mergeFrom((com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns)other);
-        } else {
-          super.mergeFrom(other);
-          return this;
-        }
-      }
-      
-      public Builder mergeFrom(com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns other) {
-        if (other == com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns.getDefaultInstance()) return this;
-        if (columnsBuilder_ == null) {
-          if (!other.columns_.isEmpty()) {
-            if (columns_.isEmpty()) {
-              columns_ = other.columns_;
-              bitField0_ = (bitField0_ & ~0x00000001);
-            } else {
-              ensureColumnsIsMutable();
-              columns_.addAll(other.columns_);
-            }
-            onChanged();
-          }
-        } else {
-          if (!other.columns_.isEmpty()) {
-            if (columnsBuilder_.isEmpty()) {
-              columnsBuilder_.dispose();
-              columnsBuilder_ = null;
-              columns_ = other.columns_;
-              bitField0_ = (bitField0_ & ~0x00000001);
-              columnsBuilder_ = 
-                com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
-                   getColumnsFieldBuilder() : null;
-            } else {
-              columnsBuilder_.addAllMessages(other.columns_);
-            }
-          }
-        }
-        if (other.hasColumnWidth()) {
-          setColumnWidth(other.getColumnWidth());
-        }
-        this.mergeUnknownFields(other.getUnknownFields());
-        return this;
-      }
-      
-      public final boolean isInitialized() {
-        for (int i = 0; i < getColumnsCount(); i++) {
-          if (!getColumns(i).isInitialized()) {
-            
-            return false;
-          }
-        }
-        return true;
-      }
-      
-      public Builder mergeFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              this.setUnknownFields(unknownFields.build());
-              onChanged();
-              return this;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                onChanged();
-                return this;
-              }
-              break;
-            }
-            case 10: {
-              com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.Builder subBuilder = com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.newBuilder();
-              input.readMessage(subBuilder, extensionRegistry);
-              addColumns(subBuilder.buildPartial());
-              break;
-            }
-            case 16: {
-              bitField0_ |= 0x00000002;
-              columnWidth_ = input.readInt32();
-              break;
-            }
-          }
-        }
-      }
-      
-      private int bitField0_;
-      
-      // repeated .HistogramColumn columns = 1;
-      private java.util.List<com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn> columns_ =
-        java.util.Collections.emptyList();
-      private void ensureColumnsIsMutable() {
-        if (!((bitField0_ & 0x00000001) == 0x00000001)) {
-          columns_ = new java.util.ArrayList<com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn>(columns_);
-          bitField0_ |= 0x00000001;
-         }
-      }
-      
-      private com.google.protobuf.RepeatedFieldBuilder<
-          com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn, com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.Builder, com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumnOrBuilder> columnsBuilder_;
-      
-      public java.util.List<com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn> getColumnsList() {
-        if (columnsBuilder_ == null) {
-          return java.util.Collections.unmodifiableList(columns_);
-        } else {
-          return columnsBuilder_.getMessageList();
-        }
-      }
-      public int getColumnsCount() {
-        if (columnsBuilder_ == null) {
-          return columns_.size();
-        } else {
-          return columnsBuilder_.getCount();
-        }
-      }
-      public com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn getColumns(int index) {
-        if (columnsBuilder_ == null) {
-          return columns_.get(index);
-        } else {
-          return columnsBuilder_.getMessage(index);
-        }
-      }
-      public Builder setColumns(
-          int index, com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn value) {
-        if (columnsBuilder_ == null) {
-          if (value == null) {
-            throw new NullPointerException();
-          }
-          ensureColumnsIsMutable();
-          columns_.set(index, value);
-          onChanged();
-        } else {
-          columnsBuilder_.setMessage(index, value);
-        }
-        return this;
-      }
-      public Builder setColumns(
-          int index, com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.Builder builderForValue) {
-        if (columnsBuilder_ == null) {
-          ensureColumnsIsMutable();
-          columns_.set(index, builderForValue.build());
-          onChanged();
-        } else {
-          columnsBuilder_.setMessage(index, builderForValue.build());
-        }
-        return this;
-      }
-      public Builder addColumns(com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn value) {
-        if (columnsBuilder_ == null) {
-          if (value == null) {
-            throw new NullPointerException();
-          }
-          ensureColumnsIsMutable();
-          columns_.add(value);
-          onChanged();
-        } else {
-          columnsBuilder_.addMessage(value);
-        }
-        return this;
-      }
-      public Builder addColumns(
-          int index, com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn value) {
-        if (columnsBuilder_ == null) {
-          if (value == null) {
-            throw new NullPointerException();
-          }
-          ensureColumnsIsMutable();
-          columns_.add(index, value);
-          onChanged();
-        } else {
-          columnsBuilder_.addMessage(index, value);
-        }
-        return this;
-      }
-      public Builder addColumns(
-          com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.Builder builderForValue) {
-        if (columnsBuilder_ == null) {
-          ensureColumnsIsMutable();
-          columns_.add(builderForValue.build());
-          onChanged();
-        } else {
-          columnsBuilder_.addMessage(builderForValue.build());
-        }
-        return this;
-      }
-      public Builder addColumns(
-          int index, com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.Builder builderForValue) {
-        if (columnsBuilder_ == null) {
-          ensureColumnsIsMutable();
-          columns_.add(index, builderForValue.build());
-          onChanged();
-        } else {
-          columnsBuilder_.addMessage(index, builderForValue.build());
-        }
-        return this;
-      }
-      public Builder addAllColumns(
-          java.lang.Iterable<? extends com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn> values) {
-        if (columnsBuilder_ == null) {
-          ensureColumnsIsMutable();
-          super.addAll(values, columns_);
-          onChanged();
-        } else {
-          columnsBuilder_.addAllMessages(values);
-        }
-        return this;
-      }
-      public Builder clearColumns() {
-        if (columnsBuilder_ == null) {
-          columns_ = java.util.Collections.emptyList();
-          bitField0_ = (bitField0_ & ~0x00000001);
-          onChanged();
-        } else {
-          columnsBuilder_.clear();
-        }
-        return this;
-      }
-      public Builder removeColumns(int index) {
-        if (columnsBuilder_ == null) {
-          ensureColumnsIsMutable();
-          columns_.remove(index);
-          onChanged();
-        } else {
-          columnsBuilder_.remove(index);
-        }
-        return this;
-      }
-      public com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.Builder getColumnsBuilder(
-          int index) {
-        return getColumnsFieldBuilder().getBuilder(index);
-      }
-      public com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumnOrBuilder getColumnsOrBuilder(
-          int index) {
-        if (columnsBuilder_ == null) {
-          return columns_.get(index);  } else {
-          return columnsBuilder_.getMessageOrBuilder(index);
-        }
-      }
-      public java.util.List<? extends com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumnOrBuilder> 
-           getColumnsOrBuilderList() {
-        if (columnsBuilder_ != null) {
-          return columnsBuilder_.getMessageOrBuilderList();
-        } else {
-          return java.util.Collections.unmodifiableList(columns_);
-        }
-      }
-      public com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.Builder addColumnsBuilder() {
-        return getColumnsFieldBuilder().addBuilder(
-            com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.getDefaultInstance());
-      }
-      public com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.Builder addColumnsBuilder(
-          int index) {
-        return getColumnsFieldBuilder().addBuilder(
-            index, com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.getDefaultInstance());
-      }
-      public java.util.List<com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.Builder> 
-           getColumnsBuilderList() {
-        return getColumnsFieldBuilder().getBuilderList();
-      }
-      private com.google.protobuf.RepeatedFieldBuilder<
-          com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn, com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.Builder, com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumnOrBuilder> 
-          getColumnsFieldBuilder() {
-        if (columnsBuilder_ == null) {
-          columnsBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
-              com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn, com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.Builder, com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumnOrBuilder>(
-                  columns_,
-                  ((bitField0_ & 0x00000001) == 0x00000001),
-                  getParentForChildren(),
-                  isClean());
-          columns_ = null;
-        }
-        return columnsBuilder_;
-      }
-      
-      // optional int32 columnWidth = 2;
-      private int columnWidth_ ;
-      public boolean hasColumnWidth() {
-        return ((bitField0_ & 0x00000002) == 0x00000002);
-      }
-      public int getColumnWidth() {
-        return columnWidth_;
-      }
-      public Builder setColumnWidth(int value) {
-        bitField0_ |= 0x00000002;
-        columnWidth_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearColumnWidth() {
-        bitField0_ = (bitField0_ & ~0x00000002);
-        columnWidth_ = 0;
-        onChanged();
-        return this;
-      }
-      
-      // @@protoc_insertion_point(builder_scope:HistogramColumns)
-    }
-    
-    static {
-      defaultInstance = new HistogramColumns(true);
-      defaultInstance.initFields();
-    }
-    
-    // @@protoc_insertion_point(class_scope:HistogramColumns)
-  }
-  
-  public interface HistogramColumnOrBuilder
-      extends com.google.protobuf.MessageOrBuilder {
-    
-    // required bytes value = 1;
-    boolean hasValue();
-    com.google.protobuf.ByteString getValue();
-    
-    // optional int32 width = 2;
-    boolean hasWidth();
-    int getWidth();
-  }
-  public static final class HistogramColumn extends
-      com.google.protobuf.GeneratedMessage
-      implements HistogramColumnOrBuilder {
-    // Use HistogramColumn.newBuilder() to construct.
-    private HistogramColumn(Builder builder) {
-      super(builder);
-    }
-    private HistogramColumn(boolean noInit) {}
-    
-    private static final HistogramColumn defaultInstance;
-    public static HistogramColumn getDefaultInstance() {
-      return defaultInstance;
-    }
-    
-    public HistogramColumn getDefaultInstanceForType() {
-      return defaultInstance;
-    }
-    
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return com.salesforce.hbase.protobuf.generated.StatisticProtos.internal_static_HistogramColumn_descriptor;
-    }
-    
-    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-        internalGetFieldAccessorTable() {
-      return com.salesforce.hbase.protobuf.generated.StatisticProtos.internal_static_HistogramColumn_fieldAccessorTable;
-    }
-    
-    private int bitField0_;
-    // required bytes value = 1;
-    public static final int VALUE_FIELD_NUMBER = 1;
-    private com.google.protobuf.ByteString value_;
-    public boolean hasValue() {
-      return ((bitField0_ & 0x00000001) == 0x00000001);
-    }
-    public com.google.protobuf.ByteString getValue() {
+    // repeated bytes value = 2;
+    public static final int VALUE_FIELD_NUMBER = 2;
+    private java.util.List<com.google.protobuf.ByteString> value_;
+    public java.util.List<com.google.protobuf.ByteString>
+        getValueList() {
       return value_;
     }
-    
-    // optional int32 width = 2;
-    public static final int WIDTH_FIELD_NUMBER = 2;
-    private int width_;
-    public boolean hasWidth() {
-      return ((bitField0_ & 0x00000002) == 0x00000002);
+    public int getValueCount() {
+      return value_.size();
     }
-    public int getWidth() {
-      return width_;
+    public com.google.protobuf.ByteString getValue(int index) {
+      return value_.get(index);
     }
     
     private void initFields() {
-      value_ = com.google.protobuf.ByteString.EMPTY;
-      width_ = 0;
+      depthOrWidth_ = 0L;
+      value_ = java.util.Collections.emptyList();;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized != -1) return isInitialized == 1;
       
-      if (!hasValue()) {
+      if (!hasDepthOrWidth()) {
         memoizedIsInitialized = 0;
         return false;
       }
@@ -751,10 +94,10 @@ public final class StatisticProtos {
                         throws java.io.IOException {
       getSerializedSize();
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        output.writeBytes(1, value_);
+        output.writeInt64(1, depthOrWidth_);
       }
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        output.writeInt32(2, width_);
+      for (int i = 0; i < value_.size(); i++) {
+        output.writeBytes(2, value_.get(i));
       }
       getUnknownFields().writeTo(output);
     }
@@ -767,11 +110,16 @@ public final class StatisticProtos {
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(1, value_);
+          .computeInt64Size(1, depthOrWidth_);
       }
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeInt32Size(2, width_);
+      {
+        int dataSize = 0;
+        for (int i = 0; i < value_.size(); i++) {
+          dataSize += com.google.protobuf.CodedOutputStream
+            .computeBytesSizeNoTag(value_.get(i));
+        }
+        size += dataSize;
+        size += 1 * getValueList().size();
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -790,22 +138,19 @@ public final class StatisticProtos {
       if (obj == this) {
        return true;
       }
-      if (!(obj instanceof com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn)) {
+      if (!(obj instanceof com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram)) {
         return super.equals(obj);
       }
-      com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn other = (com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn) obj;
+      com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram other = (com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram) obj;
       
       boolean result = true;
-      result = result && (hasValue() == other.hasValue());
-      if (hasValue()) {
-        result = result && getValue()
-            .equals(other.getValue());
+      result = result && (hasDepthOrWidth() == other.hasDepthOrWidth());
+      if (hasDepthOrWidth()) {
+        result = result && (getDepthOrWidth()
+            == other.getDepthOrWidth());
       }
-      result = result && (hasWidth() == other.hasWidth());
-      if (hasWidth()) {
-        result = result && (getWidth()
-            == other.getWidth());
-      }
+      result = result && getValueList()
+          .equals(other.getValueList());
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -815,53 +160,53 @@ public final class StatisticProtos {
     public int hashCode() {
       int hash = 41;
       hash = (19 * hash) + getDescriptorForType().hashCode();
-      if (hasValue()) {
-        hash = (37 * hash) + VALUE_FIELD_NUMBER;
-        hash = (53 * hash) + getValue().hashCode();
+      if (hasDepthOrWidth()) {
+        hash = (37 * hash) + DEPTHORWIDTH_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getDepthOrWidth());
       }
-      if (hasWidth()) {
-        hash = (37 * hash) + WIDTH_FIELD_NUMBER;
-        hash = (53 * hash) + getWidth();
+      if (getValueCount() > 0) {
+        hash = (37 * hash) + VALUE_FIELD_NUMBER;
+        hash = (53 * hash) + getValueList().hashCode();
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       return hash;
     }
     
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn parseFrom(
+    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return newBuilder().mergeFrom(data).buildParsed();
     }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn parseFrom(
+    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return newBuilder().mergeFrom(data, extensionRegistry)
                .buildParsed();
     }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn parseFrom(byte[] data)
+    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return newBuilder().mergeFrom(data).buildParsed();
     }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn parseFrom(
+    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return newBuilder().mergeFrom(data, extensionRegistry)
                .buildParsed();
     }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn parseFrom(java.io.InputStream input)
+    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram parseFrom(java.io.InputStream input)
         throws java.io.IOException {
       return newBuilder().mergeFrom(input).buildParsed();
     }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn parseFrom(
+    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
       return newBuilder().mergeFrom(input, extensionRegistry)
                .buildParsed();
     }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn parseDelimitedFrom(java.io.InputStream input)
+    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
       Builder builder = newBuilder();
       if (builder.mergeDelimitedFrom(input)) {
@@ -870,7 +215,7 @@ public final class StatisticProtos {
         return null;
       }
     }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn parseDelimitedFrom(
+    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -881,12 +226,12 @@ public final class StatisticProtos {
         return null;
       }
     }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn parseFrom(
+    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
       return newBuilder().mergeFrom(input).buildParsed();
     }
-    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn parseFrom(
+    public static com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -896,7 +241,7 @@ public final class StatisticProtos {
     
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn prototype) {
+    public static Builder newBuilder(com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
@@ -909,18 +254,18 @@ public final class StatisticProtos {
     }
     public static final class Builder extends
         com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumnOrBuilder {
+       implements com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
-        return com.salesforce.hbase.protobuf.generated.StatisticProtos.internal_static_HistogramColumn_descriptor;
+        return com.salesforce.hbase.protobuf.generated.StatisticProtos.internal_static_Histogram_descriptor;
       }
       
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return com.salesforce.hbase.protobuf.generated.StatisticProtos.internal_static_HistogramColumn_fieldAccessorTable;
+        return com.salesforce.hbase.protobuf.generated.StatisticProtos.internal_static_Histogram_fieldAccessorTable;
       }
       
-      // Construct using com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.newBuilder()
+      // Construct using com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
@@ -939,9 +284,9 @@ public final class StatisticProtos {
       
       public Builder clear() {
         super.clear();
-        value_ = com.google.protobuf.ByteString.EMPTY;
+        depthOrWidth_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000001);
-        width_ = 0;
+        value_ = java.util.Collections.emptyList();;
         bitField0_ = (bitField0_ & ~0x00000002);
         return this;
       }
@@ -952,24 +297,24 @@ public final class StatisticProtos {
       
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.getDescriptor();
+        return com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram.getDescriptor();
       }
       
-      public com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn getDefaultInstanceForType() {
-        return com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.getDefaultInstance();
+      public com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram getDefaultInstanceForType() {
+        return com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram.getDefaultInstance();
       }
       
-      public com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn build() {
-        com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn result = buildPartial();
+      public com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram build() {
+        com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram result = buildPartial();
         if (!result.isInitialized()) {
           throw newUninitializedMessageException(result);
         }
         return result;
       }
       
-      private com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn buildParsed()
+      private com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram buildParsed()
           throws com.google.protobuf.InvalidProtocolBufferException {
-        com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn result = buildPartial();
+        com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram result = buildPartial();
         if (!result.isInitialized()) {
           throw newUninitializedMessageException(
             result).asInvalidProtocolBufferException();
@@ -977,46 +322,54 @@ public final class StatisticProtos {
         return result;
       }
       
-      public com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn buildPartial() {
-        com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn result = new com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn(this);
+      public com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram buildPartial() {
+        com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram result = new com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram(this);
         int from_bitField0_ = bitField0_;
         int to_bitField0_ = 0;
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
           to_bitField0_ |= 0x00000001;
         }
-        result.value_ = value_;
-        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
-          to_bitField0_ |= 0x00000002;
+        result.depthOrWidth_ = depthOrWidth_;
+        if (((bitField0_ & 0x00000002) == 0x00000002)) {
+          value_ = java.util.Collections.unmodifiableList(value_);
+          bitField0_ = (bitField0_ & ~0x00000002);
         }
-        result.width_ = width_;
+        result.value_ = value_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
       }
       
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn) {
-          return mergeFrom((com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn)other);
+        if (other instanceof com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram) {
+          return mergeFrom((com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
       
-      public Builder mergeFrom(com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn other) {
-        if (other == com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.getDefaultInstance()) return this;
-        if (other.hasValue()) {
-          setValue(other.getValue());
+      public Builder mergeFrom(com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram other) {
+        if (other == com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram.getDefaultInstance()) return this;
+        if (other.hasDepthOrWidth()) {
+          setDepthOrWidth(other.getDepthOrWidth());
         }
-        if (other.hasWidth()) {
-          setWidth(other.getWidth());
+        if (!other.value_.isEmpty()) {
+          if (value_.isEmpty()) {
+            value_ = other.value_;
+            bitField0_ = (bitField0_ & ~0x00000002);
+          } else {
+            ensureValueIsMutable();
+            value_.addAll(other.value_);
+          }
+          onChanged();
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
       
       public final boolean isInitialized() {
-        if (!hasValue()) {
+        if (!hasDepthOrWidth()) {
           
           return false;
         }
@@ -1046,14 +399,14 @@ public final class StatisticProtos {
               }
               break;
             }
-            case 10: {
+            case 8: {
               bitField0_ |= 0x00000001;
-              value_ = input.readBytes();
+              depthOrWidth_ = input.readInt64();
               break;
             }
-            case 16: {
-              bitField0_ |= 0x00000002;
-              width_ = input.readInt32();
+            case 18: {
+              ensureValueIsMutable();
+              value_.add(input.readBytes());
               break;
             }
           }
@@ -1062,72 +415,94 @@ public final class StatisticProtos {
       
       private int bitField0_;
       
-      // required bytes value = 1;
-      private com.google.protobuf.ByteString value_ = com.google.protobuf.ByteString.EMPTY;
-      public boolean hasValue() {
+      // required int64 depthOrWidth = 1;
+      private long depthOrWidth_ ;
+      public boolean hasDepthOrWidth() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
-      public com.google.protobuf.ByteString getValue() {
-        return value_;
+      public long getDepthOrWidth() {
+        return depthOrWidth_;
       }
-      public Builder setValue(com.google.protobuf.ByteString value) {
+      public Builder setDepthOrWidth(long value) {
+        bitField0_ |= 0x00000001;
+        depthOrWidth_ = value;
+        onChanged();
+        return this;
+      }
+      public Builder clearDepthOrWidth() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        depthOrWidth_ = 0L;
+        onChanged();
+        return this;
+      }
+      
+      // repeated bytes value = 2;
+      private java.util.List<com.google.protobuf.ByteString> value_ = java.util.Collections.emptyList();;
+      private void ensureValueIsMutable() {
+        if (!((bitField0_ & 0x00000002) == 0x00000002)) {
+          value_ = new java.util.ArrayList<com.google.protobuf.ByteString>(value_);
+          bitField0_ |= 0x00000002;
+         }
+      }
+      public java.util.List<com.google.protobuf.ByteString>
+          getValueList() {
+        return java.util.Collections.unmodifiableList(value_);
+      }
+      public int getValueCount() {
+        return value_.size();
+      }
+      public com.google.protobuf.ByteString getValue(int index) {
+        return value_.get(index);
+      }
+      public Builder setValue(
+          int index, com.google.protobuf.ByteString value) {
         if (value == null) {
     throw new NullPointerException();
   }
-  bitField0_ |= 0x00000001;
-        value_ = value;
+  ensureValueIsMutable();
+        value_.set(index, value);
+        onChanged();
+        return this;
+      }
+      public Builder addValue(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  ensureValueIsMutable();
+        value_.add(value);
+        onChanged();
+        return this;
+      }
+      public Builder addAllValue(
+          java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
+        ensureValueIsMutable();
+        super.addAll(values, value_);
         onChanged();
         return this;
       }
       public Builder clearValue() {
-        bitField0_ = (bitField0_ & ~0x00000001);
-        value_ = getDefaultInstance().getValue();
-        onChanged();
-        return this;
-      }
-      
-      // optional int32 width = 2;
-      private int width_ ;
-      public boolean hasWidth() {
-        return ((bitField0_ & 0x00000002) == 0x00000002);
-      }
-      public int getWidth() {
-        return width_;
-      }
-      public Builder setWidth(int value) {
-        bitField0_ |= 0x00000002;
-        width_ = value;
-        onChanged();
-        return this;
-      }
-      public Builder clearWidth() {
+        value_ = java.util.Collections.emptyList();;
         bitField0_ = (bitField0_ & ~0x00000002);
-        width_ = 0;
         onChanged();
         return this;
       }
       
-      // @@protoc_insertion_point(builder_scope:HistogramColumn)
+      // @@protoc_insertion_point(builder_scope:Histogram)
     }
     
     static {
-      defaultInstance = new HistogramColumn(true);
+      defaultInstance = new Histogram(true);
       defaultInstance.initFields();
     }
     
-    // @@protoc_insertion_point(class_scope:HistogramColumn)
+    // @@protoc_insertion_point(class_scope:Histogram)
   }
   
   private static com.google.protobuf.Descriptors.Descriptor
-    internal_static_HistogramColumns_descriptor;
+    internal_static_Histogram_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
-      internal_static_HistogramColumns_fieldAccessorTable;
-  private static com.google.protobuf.Descriptors.Descriptor
-    internal_static_HistogramColumn_descriptor;
-  private static
-    com.google.protobuf.GeneratedMessage.FieldAccessorTable
-      internal_static_HistogramColumn_fieldAccessorTable;
+      internal_static_Histogram_fieldAccessorTable;
   
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -1137,34 +512,24 @@ public final class StatisticProtos {
       descriptor;
   static {
     java.lang.String[] descriptorData = {
-      "\n\013stats.proto\"J\n\020HistogramColumns\022!\n\007col" +
-      "umns\030\001 \003(\0132\020.HistogramColumn\022\023\n\013columnWi" +
-      "dth\030\002 \001(\005\"/\n\017HistogramColumn\022\r\n\005value\030\001 " +
-      "\002(\014\022\r\n\005width\030\002 \001(\005B?\n\'com.salesforce.hba" +
-      "se.protobuf.generatedB\017StatisticProtosH\001" +
-      "\240\001\001"
+      "\n\013stats.proto\"0\n\tHistogram\022\024\n\014depthOrWid" +
+      "th\030\001 \002(\003\022\r\n\005value\030\002 \003(\014B?\n\'com.salesforc" +
+      "e.hbase.protobuf.generatedB\017StatisticPro" +
+      "tosH\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
         public com.google.protobuf.ExtensionRegistry assignDescriptors(
             com.google.protobuf.Descriptors.FileDescriptor root) {
           descriptor = root;
-          internal_static_HistogramColumns_descriptor =
+          internal_static_Histogram_descriptor =
             getDescriptor().getMessageTypes().get(0);
-          internal_static_HistogramColumns_fieldAccessorTable = new
+          internal_static_Histogram_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_HistogramColumns_descriptor,
-              new java.lang.String[] { "Columns", "ColumnWidth", },
-              com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns.class,
-              com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumns.Builder.class);
-          internal_static_HistogramColumn_descriptor =
-            getDescriptor().getMessageTypes().get(1);
-          internal_static_HistogramColumn_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_HistogramColumn_descriptor,
-              new java.lang.String[] { "Value", "Width", },
-              com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.class,
-              com.salesforce.hbase.protobuf.generated.StatisticProtos.HistogramColumn.Builder.class);
+              internal_static_Histogram_descriptor,
+              new java.lang.String[] { "DepthOrWidth", "Value", },
+              com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram.class,
+              com.salesforce.hbase.protobuf.generated.StatisticProtos.Histogram.Builder.class);
           return null;
         }
       };
