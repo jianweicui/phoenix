@@ -140,7 +140,7 @@ public class StatisticsTable implements Closeable {
 
     // serialize each of the metrics with the associated serializer
     for (StatisticValue metric : data) {
-      LOG.debug("Writing statistic: " + metric);
+      LOG.info("Writing statistic: " + metric);
       target.put(serializer.serialize(metric));
     }
     // make sure it all reaches the target table when we are done

@@ -25,7 +25,7 @@ public class HistogramStatisticReader implements IndividualStatisticReader<Histo
     // then re-wrap the results so we can read histograms
     ColumnFamilyStatistic<HistogramStatisticValue> ret =
         new ColumnFamilyStatistic<HistogramStatisticValue>(raw.getRegion(), raw.getColumnfamily());
-    for (StatisticValue value : ret.getValues()) {
+    for (StatisticValue value : raw.getValues()) {
       try {
         ret.add(new HistogramStatisticValue(value));
       } catch (InvalidProtocolBufferException e) {

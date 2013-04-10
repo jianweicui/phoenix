@@ -62,8 +62,8 @@ public class HistogramStatisticValue extends StatisticValue {
    * was specified in the constructor), so we just need to get the next key boundary.
    * @param value value of the next column - added to the end of the histogram
    */
-  public void addColumn(byte[] value) {
-    builder.addValue(ByteString.copyFrom(value));
+  public void addColumn(ByteString value) {
+    builder.addValue(value);
   }
 
   /**

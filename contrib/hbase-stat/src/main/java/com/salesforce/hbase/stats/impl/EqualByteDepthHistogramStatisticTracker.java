@@ -11,6 +11,7 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.google.protobuf.ByteString;
 import com.salesforce.hbase.stats.BaseStatistic;
 import com.salesforce.hbase.stats.HistogramStatisticValue;
 import com.salesforce.hbase.stats.StatisticReader;
@@ -62,15 +63,13 @@ public class EqualByteDepthHistogramStatisticTracker extends BaseStatistic {
   }
 
   private HistogramStatisticValue newHistogram() {
-    return new HistogramStatisticValue(NAME,
- Bytes.toBytes("equal_width_histogram_"
+    return new HistogramStatisticValue(NAME, Bytes.toBytes("equal_width_histogram_"
         + guidepostDepth + "bytes"), guidepostDepth);
   }
 
   @Override
   public List<StatisticValue> getCurrentStats() {
     return Collections.singletonList((StatisticValue) histogram);
-
   }
 
   @Override
@@ -81,11 +80,11 @@ public class EqualByteDepthHistogramStatisticTracker extends BaseStatistic {
 
   @Override
   public void updateStatistic(KeyValue kv) {
-    byteCount += kv.getBuffer().length;
+    byteCount += kv.getLength();
     // if we are at the next guide-post, add it to the histogram
     if (byteCount >= guidepostDepth) {
       // update the histogram
-      this.histogram.addColumn(kv.getBuffer());
+      this.histogram.addColumn(ByteString.copyFrom(kv.getBuffer(), kv.getOffset(), kv.getLength()));
 
       //reset the count for the next key
       byteCount = 0;

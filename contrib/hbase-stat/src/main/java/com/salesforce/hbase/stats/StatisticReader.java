@@ -28,7 +28,7 @@ public class StatisticReader<S extends StatisticValue> {
 
   private static final Log LOG = LogFactory.getLog(StatisticReader.class);
 
-  private IndividualStatisticReader<S> serde;
+  private IndividualStatisticReader<S> deserializer;
   private byte[] name;
 
   private HTableInterface table;
@@ -38,11 +38,11 @@ public class StatisticReader<S extends StatisticValue> {
   // by default, we only return the latest version of a statistc
   private static final int DEFAULT_VERSIONS = 1;
 
-  public StatisticReader(StatisticsTable stats, IndividualStatisticReader<S> serde,
+  public StatisticReader(StatisticsTable stats, IndividualStatisticReader<S> statReader,
       byte[] statisticName) {
     this.table = stats.getUnderlyingTable();
     this.source = stats.getSourceTableName();
-    this.serde = serde;
+    this.deserializer = statReader;
     this.name = statisticName;
   }
 
@@ -145,7 +145,7 @@ public class StatisticReader<S extends StatisticValue> {
     Get g = new Get(row);
     g.setMaxVersions(versions);
     Result r = table.get(g);
-    return serde.deserialize(r);
+    return deserializer.deserialize(r);
   }
 
   /**
@@ -167,7 +167,7 @@ public class StatisticReader<S extends StatisticValue> {
     List<ColumnFamilyStatistic<S>> stats = new ArrayList<ColumnFamilyStatistic<S>>();
     for (Result r : scanner) {
       LOG.info("Got result:" + r);
-      stats.add(serde.deserialize(r));
+      stats.add(deserializer.deserialize(r));
     }
     return stats;
   }
