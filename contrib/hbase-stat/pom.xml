@@ -205,7 +205,7 @@
         <version>${surefire.version}</version>
         <configuration>
           <forkedProcessTimeoutInSeconds>${test.timeout}</forkedProcessTimeoutInSeconds>
-          <argLine>-enableassertions -Xmx2048m
+          <argLine>-enableassertions -Xmx1900
               -Djava.security.egd=file:/dev/./urandom</argLine>
           <redirectTestOutputToFile>${test.output.tofile}</redirectTestOutputToFile>
         </configuration>
