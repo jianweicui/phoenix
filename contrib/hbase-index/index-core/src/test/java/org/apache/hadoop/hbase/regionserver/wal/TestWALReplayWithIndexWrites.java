@@ -41,7 +41,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import com.salesforce.hbase.index.Indexer;
-import com.salesforce.hbase.index.builder.ColumnFamilyIndexer;
+import com.salesforce.hbase.index.builder.CoveredColumnFamilyIndexer;
 import com.salesforce.hbase.index.table.HTableFactory;
 
 /**
@@ -137,7 +137,7 @@ public class TestWALReplayWithIndexWrites {
     Map<byte[], String> familyMap = new HashMap<byte[], String>();
     byte[] indexedFamily = new byte[] {'a'};
     familyMap.put(indexedFamily, INDEX_TABLE_NAME);
-    ColumnFamilyIndexer.enableIndexing(htd, familyMap);
+    CoveredColumnFamilyIndexer.enableIndexing(htd, familyMap);
 
     // create the region + its WAL
     HRegion region0 = HRegion.createHRegion(hri, hbaseRootDir, this.conf, htd);
@@ -167,7 +167,7 @@ public class TestWALReplayWithIndexWrites {
     wal.close();
 
     // then create the index table so we are successful on WAL replay
-    ColumnFamilyIndexer.createIndexTable(UTIL.getHBaseAdmin(), INDEX_TABLE_NAME);
+    CoveredColumnFamilyIndexer.createIndexTable(UTIL.getHBaseAdmin(), INDEX_TABLE_NAME);
 
     // run the WAL split and setup the region
     runWALSplit(this.conf);

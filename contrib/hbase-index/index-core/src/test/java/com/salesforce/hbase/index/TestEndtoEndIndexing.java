@@ -43,7 +43,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.salesforce.hbase.index.builder.ColumnFamilyIndexer;
+import com.salesforce.hbase.index.builder.CoveredColumnFamilyIndexer;
 
 /**
  * Test secondary indexing from an end-to-end perspective (client to server to index table)
@@ -135,7 +135,7 @@ public class TestEndtoEndIndexing {
     // setup indexing on one table and one of its columns
     Map<byte[], String> indexMapping = new HashMap<byte[], String>();
     indexMapping.put(FAM, INDEX_TABLE);
-    ColumnFamilyIndexer.enableIndexing(primary, indexMapping);
+    CoveredColumnFamilyIndexer.enableIndexing(primary, indexMapping);
 
     // setup the stats table
     HBaseAdmin admin = UTIL.getHBaseAdmin();
@@ -143,7 +143,7 @@ public class TestEndtoEndIndexing {
     admin.createTable(primary);
 
     // create the index table
-    ColumnFamilyIndexer.createIndexTable(admin, INDEX_TABLE);
+    CoveredColumnFamilyIndexer.createIndexTable(admin, INDEX_TABLE);
 
     assertTrue("Target index table (" + INDEX_TABLE + ") didn't get created!",
       admin.tableExists(INDEX_TABLE));

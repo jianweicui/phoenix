@@ -88,7 +88,7 @@ public class Indexer extends BaseRegionObserver {
       throw new IOException("Couldn't instantiate index builder:" + builderClass
           + ", disabling indexing on table " + env.getRegion().getTableDesc().getNameAsString());
     }
-    this.builder.setup(conf);
+    this.builder.setup(env);
 
     // get a reference to the WAL
     log = env.getRegionServerServices().getWAL();
