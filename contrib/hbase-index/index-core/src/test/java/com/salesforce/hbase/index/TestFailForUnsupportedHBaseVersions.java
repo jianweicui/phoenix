@@ -22,7 +22,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.VersionInfo;
 import org.junit.Test;
 
-import com.salesforce.hbase.index.builder.CoveredColumnFamilyIndexer;
+import com.salesforce.hbase.index.builder.covered.CoveredColumnIndexer;
 
 /**
  * Test that we correctly fail for versions of HBase that don't support current properties
@@ -108,7 +108,7 @@ public class TestFailForUnsupportedHBaseVersions {
     // enable indexing to a non-existant index table
     Map<byte[], String> familyMap = new HashMap<byte[], String>();
     familyMap.put(Bytes.toBytes(family), "INDEX_TABLE");
-    CoveredColumnFamilyIndexer.enableIndexing(desc, familyMap);
+    CoveredColumnIndexer.enableIndexing(desc, familyMap);
 
     // get a reference to the regionserver, so we can ensure it aborts
     HRegionServer server = util.getMiniHBaseCluster().getRegionServer(0);
