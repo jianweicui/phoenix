@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import javax.annotation.Nullable;
+
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -135,7 +137,7 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
 
     // build the index updates for each group
     Map<Mutation, String> updateMap = new HashMap<Mutation, String>();
-    List<ColumnGroup> matches = findMatchingGroupsAndUpdateTimestamps(p, timestamp);
+    List<ColumnGroup> matches = findMatchingGroupsAndUpdateTimestamps(p, timestamp, true);
 
     // build up the index entries for each group
     for (ColumnGroup group : matches) {
@@ -148,7 +150,8 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
    * @param timestamp
    * @return
    */
-  private List<ColumnGroup> findMatchingGroupsAndUpdateTimestamps(Mutation m, byte[] timestamp) {
+  private List<ColumnGroup> findMatchingGroupsAndUpdateTimestamps(Mutation m, byte[] timestamp,
+      boolean updateTimestamps) {
     List<ColumnGroup> matches = new ArrayList<ColumnGroup>();
     for (Entry<byte[], List<KeyValue>> entry : m.getFamilyMap().entrySet()) {
       // get the keys for this family that we are indexing
@@ -165,10 +168,12 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
           matches.add(column);
         }
       }
-      // update the timestamps for all the kvs that go into the primary table so they match the
-      // index entries
-      for (KeyValue kv : entry.getValue()) {
-        kv.updateLatestStamp(timestamp);
+      if (updateTimestamps) {
+        // update the timestamps for all the kvs that go into the primary table so they match the
+        // index entries
+        for (KeyValue kv : entry.getValue()) {
+          kv.updateLatestStamp(timestamp);
+        }
       }
     }
     return matches;
@@ -275,7 +280,7 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
     }
 
     // check the map to see if we are affecting any of the groups
-    List<ColumnGroup> matches = findMatchingGroupsAndUpdateTimestamps(d, timestamp);
+    List<ColumnGroup> matches = findMatchingGroupsAndUpdateTimestamps(d, timestamp, false);
 
     // build up the index entries for each group
     for (ColumnGroup group : matches) {
@@ -285,64 +290,57 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
   }
   
   /**
-   * Adds the necessary index updates for the column group to the map of mutations
-   * @param group for which to build the index update
+   * Get the mutations for a delete where we aren't deleting the entire row, but rather just a
+   * subset of the the columns in the row.
+   * @param group which is at least partially covered by the pending delete.
    * @param timestamp timestamp of the current update
    * @param curerntRow current state of the row from the table
    * @param pendingUpdate update being added to the table
    */
   private void getMutationsForDelete(Map<Mutation, String> mutations, ColumnGroup group,
-      long timestamp, Result currentRow, Delete pendingUpdate, boolean customTimestamp) {
+      final long timestamp, Result currentRow, Delete pendingUpdate, boolean customTimestamp) {
     String table = group.getTable();
-    // Start by building the Put that we need to make to the index
-    byte[] row = group.buildRowKey(pendingUpdate, currentRow);
-    // the put row actually contains all the values for the columns in a column group - we only need
-    // to get their columns and add them to the put so we can get back the full row specification
-    Put indexInsert = new Put(row);
-    int i = 0;
-    for (CoveredColumn column : group) {
-      // create the update for the new columns at the given timestamp
-      indexInsert.add(CoveredColumnIndexer.INDEX_ROW_COLUMN_FAMILY,
-        ArrayUtils.addAll(Bytes.toBytes(i), column.toIndexQualifier()), timestamp, null);
-    }
-    mutations.put(indexInsert, table);
+    // break out the current row into something that we can manage
+    ValueMap map = new ValueMap(group, currentRow.getRow());
 
-    // now we need to cleanup the index at the right timestamp. In short, if things arrive out of
-    // order, we should always still only see the most recent update, even if we are making a put
-    // back in time (out of order). Unfortunately, this gets a little hairy...
-
-    Delete indexCleanup = null;
-    byte[] deleteRow = group.buildRowKey(EMPTY_PUT, currentRow);
-    long deleteTs = timestamp;
-    // just latest time, so we can build a delete from the current state of the row (the same as the
-    // put, but without the pending updates)
-    if (customTimestamp) {
-      // there is a custom timestamp, so we need to figure out which is the latest timestamp -
-      // either the put or the current row
-      long maxTs = Long.MIN_VALUE;
-      for (final CoveredColumn column : group) {
-        // check the put and the result for the max ts
-        Iterable<KeyValue> all = Iterables.concat(pendingUpdate.getFamilyMap()
-          .get(Bytes.toBytes(column.family)), currentRow.list());
-        // filter out kvs that don't match this column
-        Predicate<KeyValue> predicate = column.getColumnQualifierPredicate();
-        // find the max ts
-        for (KeyValue kv : Iterables.filter(all,predicate ))
-          if (kv.getTimestamp() > maxTs) {
-            maxTs = kv.getTimestamp();
-          }
+    // include all the rows with a timestamp older than the given timestamp. This gives us the
+    // "current row state", even if we are back in time
+    map.addToMap(currentRow.list(), new Predicate<KeyValue>() {
+      @Override
+      public boolean apply(@Nullable KeyValue input) {
+        if (input == null) {
+          return false;
         }
-
-      // there are some columns that are newer than the pending update, so we need to figure out
-      // update to make upto (and including) the pending write, but no further
-      if (timestamp != maxTs) {
-        deleteRow = group.buildOlderDeleteRowKey(pendingUpdate, currentRow, maxTs);
-        deleteTs = maxTs;
+        return input.getTimestamp() < timestamp;
       }
+    });
+
+    // then we need to create a bunch of inserts/deletes to manage the change in state. If the
+    // delete covers the entire group (i.e. group of just one family 'fam' and the delete deletes
+    // that family) we don't need to update the old entries. However, if we only cover part of the
+    // group we need to make a delete for the existing value and then _an insert for the new value_.
+
+    // get the current row from the map
+    byte[] currentRowkey = map.toIndexValue();
+
+    // always need to delete the current row key because we know that this group is included in the
+    // delete when this method is called.
+    Delete cleanup = new Delete(currentRowkey);
+    cleanup.setTimestamp(timestamp);
+    mutations.put(cleanup, group.getTable());
+
+    // apply the delete to the internal value map
+    map.applyDelete(pendingUpdate);
+    byte[] deleteKey = map.toIndexValue();
+
+    // its a covering delete key, so we can just delete the old row and we are done
+    if (KeyValueUtils.checkRowKeyForAllNulls(deleteKey)) {
+      return;
     }
 
-    indexCleanup = new Delete(deleteRow);
-    indexCleanup.setTimestamp(deleteTs);
-    mutations.put(indexCleanup, table);
+    // delete didn't completely cover the group, so we need to update the index
+    Put indexInsert = new Put(deleteKey);
+    map.addColumnsToIndexUpdate(indexInsert, INDEX_ROW_COLUMN_FAMILY, timestamp);
+    mutations.put(indexInsert, table);
   }
 }

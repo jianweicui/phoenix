@@ -8,14 +8,22 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map.Entry;
 
+import javax.annotation.Nullable;
+
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Pair;
 
+import com.google.common.base.Function;
+import com.google.common.base.Predicate;
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multiset;
 
@@ -38,20 +46,35 @@ public class ValueMap {
    * Add a collection of key-values to the internal map. the order the keys are added (both in the
    * iterable and in the order calling this method) specifies the underlying order in which the keys
    * are stored.
-   * @param kvs
+   * @param kvs to add
    */
   public void addToMap(Iterable<KeyValue> kvs) {
+    addToMap(kvs, null);
+  }
+
+  /**
+   * Add a collection of key-values to the internal map. the order the keys are added (both in the
+   * iterable and in the order calling this method) specifies the underlying order in which the keys
+   * are stored.
+   * @param kvs to add
+   * @param filter filter to apply to the {@link KeyValue}s before they are added to the map. Any
+   *          {@link KeyValue} that doesn't pass this filter won't even be considered in the map
+   */
+  public void addToMap(Iterable<KeyValue> kvs, Predicate<KeyValue> filter) {
+    // apply the filter to the input keyvalues
+    Iterable<KeyValue> iter = filter != null ? Iterables.filter(kvs, filter) : kvs;
+
     // for each entry, figure out if it matches our columns, in which case load it into the value
     // multi-map
-    for (KeyValue kv: kvs) {
+    for (KeyValue kv : iter) {
       // add a matching family:column to the value map
-      if (group.matches(kv.getFamily(), kv.getQualifier())){
+      if (group.matches(kv.getFamily(), kv.getQualifier())) {
         byte[] valuekey = addAll(kv.getFamily(), kv.getQualifier());
         values.put(new ImmutableBytesWritable(valuekey), kv);
       }
     }
   }
-  
+
   /**
    * Apply a delete to the the existing map. Uses the underlying {@link Delete#getFamilyMap()} to
    * figure out which columns/versions to remove.
@@ -59,7 +82,7 @@ public class ValueMap {
    */
   public void applyDelete(Delete d) {
     for (Entry<byte[], List<KeyValue>> family : d.getFamilyMap().entrySet()) {
-      //check to see if the column is in the values
+      // check to see if the column is in the values
       for (KeyValue kv : family.getValue()) {
         ImmutableBytesWritable key =
             new ImmutableBytesWritable(addAll(family.getKey(), kv.getQualifier()));
@@ -149,8 +172,14 @@ public class ValueMap {
   public byte[] toIndexValue() {
     int length = 0;
     List<byte[]> topValues = new ArrayList<byte[]>();
+    // sort the keys so we get the correct ordering in the returned values
+    // this is a little bit heavy weight, but we shouldn't have a ton and we can come back and fix
+    // this later if its too expensive.
+    Multiset<ImmutableBytesWritable> keys = values.keys();
+    List<ImmutableBytesWritable> sorted = Lists.newArrayList(keys);
+    Collections.sort(sorted);
     for (CoveredColumn column : group) {
-      List<byte[]> values = getValues(column);
+      List<byte[]> values = getValues(sorted, column);
       for (int i = 0; i < values.size(); i++) {
         byte[] value = values.get(i);
         if (value == null) {
@@ -168,20 +197,26 @@ public class ValueMap {
    * @param column
    * @return
    */
-  private List<byte[]> getValues(CoveredColumn column) {
-    List<byte[]> ret = new ArrayList<byte[]>();
+  private List<byte[]> getValues(Iterable<ImmutableBytesWritable> sorted, CoveredColumn column) {
+    final List<byte[]> ret = new ArrayList<byte[]>();
+    Function<Pair<ImmutableBytesWritable, CoveredColumn>, Void> apply =
+        new Function<Pair<ImmutableBytesWritable, CoveredColumn>, Void>() {
+      @Override
+      @Nullable
+          public Void apply(@Nullable Pair<ImmutableBytesWritable, CoveredColumn> input) {
+            KeyValue kv = ValueMap.this.values.get(input.getFirst()).get(0);
+            ret.add(kv != null ? kv.getValue() : null);
+            return null;
+      }
+
+    };
+    applyChangesForMatchingColumns(apply, sorted, column);
     byte[] familyBytes = Bytes.toBytes(column.family);
     byte[] asBytes = addAll(familyBytes, column.qualifier);
-    Multiset<ImmutableBytesWritable> keys = values.keys();
-    //sort the keys so we get the correct ording in the returned values
-    // this is a little bit heavy weight, but we shouldn't have a ton and we can come back and fix
-    // this later if its too expensive.
-    List<ImmutableBytesWritable> sorted = Lists.newArrayList(keys);
-    Collections.sort(sorted);
     for (ImmutableBytesWritable stored : sorted) {
       // if they have the same family
       if (Bytes.startsWith(stored.get(), familyBytes)) {
-        //if there is no qualifier or matches exactly to the pair
+        // if there is no qualifier or matches exactly to the pair
         if (column.qualifier == null || Bytes.equals(asBytes, stored.get())) {
           KeyValue kv = values.get(stored).get(0);
           ret.add(kv != null ? kv.getValue() : null);
@@ -189,5 +224,53 @@ public class ValueMap {
       }
     }
     return ret;
+  }
+
+  public void addColumnsToIndexUpdate(final Put indexInsert, final byte[] family,
+      final long timestamp) {
+    final int[] count = new int[] { 0 };
+    Function<Pair<ImmutableBytesWritable, CoveredColumn>, Void> apply =
+        new Function<Pair<ImmutableBytesWritable, CoveredColumn>, Void>() {
+          @Override
+          @Nullable
+          public Void apply(@Nullable Pair<ImmutableBytesWritable, CoveredColumn> input) {
+            indexInsert.add(family,
+              ArrayUtils.addAll(Bytes.toBytes(count[0]++), input.getSecond().toIndexQualifier()),
+              timestamp, null);
+            return null;
+          }
+        };
+    // sort the keys so we get the correct ordering in the returned values
+    // this is a little bit heavy weight, but we shouldn't have a ton and we can come back and fix
+    // this later if its too expensive.
+    Multiset<ImmutableBytesWritable> keys = values.keys();
+    List<ImmutableBytesWritable> sorted = Lists.newArrayList(keys);
+    Collections.sort(sorted);
+    for (CoveredColumn column : group) {
+      applyChangesForMatchingColumns(apply, sorted, column);
+    }
+  }
+
+  /**
+   * Iterate through the passed keys looking for a match with the given column. If there is a match,
+   * pass the surrounding context to the function to modify some internal state.
+   * @param toApply function to apply on match
+   * @param keys the keys to iterate through
+   * @param column column to match the keys against. Uses the same matching as a
+   *          {@link CoveredColumn} usually would.
+   */
+  private void applyChangesForMatchingColumns(Function<Pair<ImmutableBytesWritable, CoveredColumn>, Void> toApply,
+      Iterable<ImmutableBytesWritable> keys, CoveredColumn column) {
+    byte[] familyBytes = Bytes.toBytes(column.family);
+    byte[] asBytes = addAll(familyBytes, column.qualifier);
+    for (ImmutableBytesWritable stored : keys) {
+      // if they have the same family
+      if (Bytes.startsWith(stored.get(), familyBytes)) {
+        // if there is no qualifier or matches exactly to the pair
+        if (column.qualifier == null || Bytes.equals(asBytes, stored.get())) {
+          toApply.apply(new Pair<ImmutableBytesWritable, CoveredColumn>(stored, column));
+        }
+      }
+    }
   }
 }

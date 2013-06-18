@@ -43,6 +43,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.salesforce.hbase.index.builder.ColumnFamilyIndexer;
 import com.salesforce.hbase.index.builder.covered.CoveredColumnIndexer;
 
 /**
@@ -135,7 +136,7 @@ public class TestEndtoEndIndexing {
     // setup indexing on one table and one of its columns
     Map<byte[], String> indexMapping = new HashMap<byte[], String>();
     indexMapping.put(FAM, INDEX_TABLE);
-    CoveredColumnIndexer.enableIndexing(primary, indexMapping);
+    ColumnFamilyIndexer.enableIndexing(primary, indexMapping);
 
     // setup the stats table
     HBaseAdmin admin = UTIL.getHBaseAdmin();

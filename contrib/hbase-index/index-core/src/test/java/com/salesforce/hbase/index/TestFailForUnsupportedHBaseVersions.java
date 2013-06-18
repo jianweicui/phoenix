@@ -3,7 +3,6 @@ package com.salesforce.hbase.index;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,7 +21,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.VersionInfo;
 import org.junit.Test;
 
-import com.salesforce.hbase.index.builder.covered.CoveredColumnIndexer;
+import com.salesforce.hbase.index.builder.ColumnFamilyIndexer;
 
 /**
  * Test that we correctly fail for versions of HBase that don't support current properties
@@ -108,7 +107,7 @@ public class TestFailForUnsupportedHBaseVersions {
     // enable indexing to a non-existant index table
     Map<byte[], String> familyMap = new HashMap<byte[], String>();
     familyMap.put(Bytes.toBytes(family), "INDEX_TABLE");
-    CoveredColumnIndexer.enableIndexing(desc, familyMap);
+    ColumnFamilyIndexer.enableIndexing(desc, familyMap);
 
     // get a reference to the regionserver, so we can ensure it aborts
     HRegionServer server = util.getMiniHBaseCluster().getRegionServer(0);
