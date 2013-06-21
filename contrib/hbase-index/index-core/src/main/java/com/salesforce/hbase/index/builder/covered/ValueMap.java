@@ -10,13 +10,12 @@ import java.util.Map.Entry;
 
 import javax.annotation.Nullable;
 
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.regionserver.MemStore;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 
@@ -28,11 +27,13 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Multiset;
 
 /**
- *
+ * Essentially a lightweight {@link MemStore} that just manages a single row.This makes it easier to
+ * reason about applying changes to a single row (e.g. applying a delete, finding the most recent
+ * value at a timetamp).
  */
 public class ValueMap {
-
-  private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
+  // TODO look into switching this class out for a real MemStore - its far more likely to be correct
+  // and potentially could be shared across index calls, though with some overhead.
   ArrayListMultimap<ImmutableBytesWritable, KeyValue> values = ArrayListMultimap.create();
   private ColumnGroup group;
   private byte[] pk;
@@ -40,6 +41,14 @@ public class ValueMap {
   public ValueMap(ColumnGroup group, byte[] pk) {
     this.group = group;
     this.pk = pk;
+  }
+
+  public ValueMap clone() {
+    ValueMap clone = new ValueMap(group, pk);
+    for (Entry<ImmutableBytesWritable, Collection<KeyValue>> entry : values.asMap().entrySet()) {
+      clone.values.putAll(entry.getKey(), entry.getValue());
+    }
+    return clone;
   }
 
   /**
@@ -77,7 +86,8 @@ public class ValueMap {
 
   /**
    * Apply a delete to the the existing map. Uses the underlying {@link Delete#getFamilyMap()} to
-   * figure out which columns/versions to remove.
+   * figure out which columns/versions to remove; if the {@link Delete} does not specify a family
+   * (its just a row level delete) this method won't do anything.
    * @param d to apply
    */
   public void applyDelete(Delete d) {
@@ -164,41 +174,17 @@ public class ValueMap {
   }
 
   /**
-   * Get the most recent value for each column group, in the order of the columns stored in the
-   * group and then build them into a single byte array to use as the prefix for an index update for
-   * the column group.
-   * @return
+   * Get the values that match the specified column.
+   * @param column to check against each value
+   * @return all values matching the stored column. Returned stored in order to the
+   *         lexicographically sorted order of the value's family:qualifier
    */
-  public byte[] toIndexValue() {
-    int length = 0;
-    List<byte[]> topValues = new ArrayList<byte[]>();
-    // sort the keys so we get the correct ordering in the returned values
-    // this is a little bit heavy weight, but we shouldn't have a ton and we can come back and fix
-    // this later if its too expensive.
-    Multiset<ImmutableBytesWritable> keys = values.keys();
-    List<ImmutableBytesWritable> sorted = Lists.newArrayList(keys);
-    Collections.sort(sorted);
-    for (CoveredColumn column : group) {
-      List<byte[]> values = getValues(sorted, column);
-      for (int i = 0; i < values.size(); i++) {
-        byte[] value = values.get(i);
-        if (value == null) {
-          value = EMPTY_BYTE_ARRAY;
-        }
-        length += value.length;
-        topValues.add(value);
-      }
-    }
-
-    return KeyValueUtils.composeRowKey(pk, length, topValues);
-  }
-
-  /**
-   * @param column
-   * @return
-   */
-  private List<byte[]> getValues(Iterable<ImmutableBytesWritable> sorted, CoveredColumn column) {
+  public List<byte[]> getValues(Iterable<ImmutableBytesWritable> sorted, CoveredColumn column) {
     final List<byte[]> ret = new ArrayList<byte[]>();
+
+    // for each match, just add it to the returned list of values
+    // null kv == no match in the values, but it was there at some point (e.g. got removed by a
+    // delete), so we add in a null in the values.
     Function<Pair<ImmutableBytesWritable, CoveredColumn>, Void> apply =
         new Function<Pair<ImmutableBytesWritable, CoveredColumn>, Void>() {
       @Override
@@ -226,40 +212,19 @@ public class ValueMap {
     return ret;
   }
 
-  public void addColumnsToIndexUpdate(final Put indexInsert, final byte[] family,
-      final long timestamp) {
-    final int[] count = new int[] { 0 };
-    Function<Pair<ImmutableBytesWritable, CoveredColumn>, Void> apply =
-        new Function<Pair<ImmutableBytesWritable, CoveredColumn>, Void>() {
-          @Override
-          @Nullable
-          public Void apply(@Nullable Pair<ImmutableBytesWritable, CoveredColumn> input) {
-            indexInsert.add(family,
-              ArrayUtils.addAll(Bytes.toBytes(count[0]++), input.getSecond().toIndexQualifier()),
-              timestamp, null);
-            return null;
-          }
-        };
-    // sort the keys so we get the correct ordering in the returned values
-    // this is a little bit heavy weight, but we shouldn't have a ton and we can come back and fix
-    // this later if its too expensive.
-    Multiset<ImmutableBytesWritable> keys = values.keys();
-    List<ImmutableBytesWritable> sorted = Lists.newArrayList(keys);
-    Collections.sort(sorted);
-    for (CoveredColumn column : group) {
-      applyChangesForMatchingColumns(apply, sorted, column);
-    }
-  }
-
   /**
    * Iterate through the passed keys looking for a match with the given column. If there is a match,
-   * pass the surrounding context to the function to modify some internal state.
+   * calls the function with some of the state about the match.
+   * <p>
+   * We only iterate through the known keys, rather than through each expected column, so if there
+   * isn't a stored key for the column, we aren't going to get a match.
    * @param toApply function to apply on match
    * @param keys the keys to iterate through
    * @param column column to match the keys against. Uses the same matching as a
    *          {@link CoveredColumn} usually would.
    */
-  private void applyChangesForMatchingColumns(Function<Pair<ImmutableBytesWritable, CoveredColumn>, Void> toApply,
+  public static void applyChangesForMatchingColumns(
+      Function<Pair<ImmutableBytesWritable, CoveredColumn>, Void> toApply,
       Iterable<ImmutableBytesWritable> keys, CoveredColumn column) {
     byte[] familyBytes = Bytes.toBytes(column.family);
     byte[] asBytes = addAll(familyBytes, column.qualifier);
@@ -272,5 +237,34 @@ public class ValueMap {
         }
       }
     }
+  }
+
+  /**
+   * @return
+   */
+  public Multiset<ImmutableBytesWritable> keys() {
+    return this.values.keys();
+  }
+
+  /**
+   * @return
+   */
+  public ColumnGroup getGroup() {
+    return this.group;
+  }
+
+  public byte[] primaryKey() {
+    return this.pk;
+  }
+
+  /**
+   * @param allEdits {@link ValueMap} to evaluate
+   * @return a lexicographically sorted {@link List} of the keys from the passed value map
+   */
+  public List<ImmutableBytesWritable> getSortedKeys() {
+    Multiset<ImmutableBytesWritable> keys = this.keys();
+    List<ImmutableBytesWritable> sorted = Lists.newArrayList(keys);
+    Collections.sort(sorted);
+    return sorted;
   }
 }

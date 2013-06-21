@@ -4,14 +4,14 @@ import java.util.Arrays;
 
 import javax.annotation.Nullable;
 
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.google.common.base.Predicate;
 
 /**
- *
+ * A single Column (either a Column Family or a full Family:Qualifier pair) in a {@link ColumnGroup}
+ * . If no column qualifier is specified, matches all known qualifiers of the family.
  */
 public class CoveredColumn {
 
@@ -60,12 +60,6 @@ public class CoveredColumn {
     return this.family.equals(family2);
   }
 
-  /**
-   * @return
-   */
-  public byte[] toIndexQualifier() {
-    return ArrayUtils.addAll(Bytes.toBytes(family + SEPARATOR), qualifier);
-  }
 
   public Predicate<KeyValue> getColumnQualifierPredicate() {
     return new Predicate<KeyValue>() {

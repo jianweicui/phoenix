@@ -9,13 +9,11 @@ import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.Pair;
 
 import com.salesforce.hbase.index.IndexUtil;
 
 /**
- *
+ * Helper to build the configuration for the {@link CoveredColumnIndexer}.
  */
 public class CoveredColumnIndexSpecifierBuilder {
 

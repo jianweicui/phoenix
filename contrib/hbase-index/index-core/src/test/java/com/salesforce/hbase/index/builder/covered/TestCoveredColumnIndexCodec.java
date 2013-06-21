@@ -8,6 +8,7 @@ import java.util.List;
 
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
@@ -16,7 +17,7 @@ import com.google.common.collect.Lists;
 /**
  *
  */
-public class TestValueMap {
+public class TestCoveredColumnIndexCodec {
   private static final byte[] PK = new byte[] { 'a' };
   private static final String FAMILY_STRING = "family";
   private static final byte[] FAMILY = Bytes.toBytes(FAMILY_STRING);
@@ -38,17 +39,19 @@ public class TestValueMap {
     kvs.add(kv);
     map.addToMap(kvs);
 
+    List<ImmutableBytesWritable> sorted = map.getSortedKeys();
+
     // simple case - no deletes
-    byte[] indexValue = map.toIndexValue();
-    byte[] expected = KeyValueUtils.composeRowKey(PK, v1.length, Arrays.asList(v1));
+    byte[] indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    byte[] expected = CoveredColumnIndexCodec.composeRowKey(PK, v1.length, Arrays.asList(v1));
     assertArrayEquals("Didn't get expected index value", expected, indexValue);
 
     // now add a delete that covers that column family
     Delete d = new Delete(PK);
     d.deleteFamily(FAMILY);
     map.applyDelete(d);
-    indexValue = map.toIndexValue();
-    expected = KeyValueUtils.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
+    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    expected = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
 
     // reset the map
@@ -59,8 +62,8 @@ public class TestValueMap {
     d = new Delete(PK);
     d.deleteColumns(FAMILY, QUAL);
     map.applyDelete(d);
-    indexValue = map.toIndexValue();
-    expected = KeyValueUtils.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
+    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    expected = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
 
     // reset the map
@@ -71,8 +74,8 @@ public class TestValueMap {
     d = new Delete(PK);
     d.deleteColumn(FAMILY, QUAL);
     map.applyDelete(d);
-    indexValue = map.toIndexValue();
-    expected = KeyValueUtils.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
+    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    expected = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
   }
 
@@ -93,17 +96,19 @@ public class TestValueMap {
     kvs.add(kv);
     map.addToMap(kvs);
 
+    List<ImmutableBytesWritable> sorted = map.getSortedKeys();
+
     // simple case - no deletes, all columns
-    byte[] indexValue = map.toIndexValue();
-    byte[] expected = KeyValueUtils.composeRowKey(PK, v1.length, Arrays.asList(v1));
+    byte[] indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    byte[] expected = CoveredColumnIndexCodec.composeRowKey(PK, v1.length, Arrays.asList(v1));
     assertArrayEquals("Didn't get expected index value", expected, indexValue);
 
     // now add a delete that covers that entire column family
     Delete d = new Delete(PK);
     d.deleteFamily(FAMILY);
     map.applyDelete(d);
-    indexValue = map.toIndexValue();
-    expected = KeyValueUtils.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
+    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    expected = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
 
     // reset the map
@@ -114,8 +119,8 @@ public class TestValueMap {
     d = new Delete(PK);
     d.deleteColumns(FAMILY, QUAL);
     map.applyDelete(d);
-    indexValue = map.toIndexValue();
-    expected = KeyValueUtils.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
+    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    expected = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
 
     // reset the map
@@ -126,8 +131,8 @@ public class TestValueMap {
     d = new Delete(PK);
     d.deleteColumn(FAMILY, QUAL);
     map.applyDelete(d);
-    indexValue = map.toIndexValue();
-    expected = KeyValueUtils.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
+    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    expected = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
   }
 
@@ -151,17 +156,19 @@ public class TestValueMap {
     kvs.add(kv);
     map.addToMap(kvs);
 
+    List<ImmutableBytesWritable> sorted = map.getSortedKeys();
+
     // simple case - no deletes, all columns
-    byte[] indexValue = map.toIndexValue();
-    byte[] expected = KeyValueUtils.composeRowKey(PK, v1.length + v3.length, Arrays.asList(v1, v3));
+    byte[] indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    byte[] expected = CoveredColumnIndexCodec.composeRowKey(PK, v1.length + v3.length, Arrays.asList(v1, v3));
     assertArrayEquals("Didn't get expected index value", expected, indexValue);
 
     // now add a delete that covers that entire column family
     Delete d = new Delete(PK);
     d.deleteFamily(FAMILY);
     map.applyDelete(d);
-    indexValue = map.toIndexValue();
-    expected = KeyValueUtils.composeRowKey(PK, 0, Lists.newArrayList(new byte[0], new byte[0]));
+    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    expected = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0], new byte[0]));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
 
     // reset the map
@@ -172,8 +179,8 @@ public class TestValueMap {
     d = new Delete(PK);
     d.deleteColumns(FAMILY, QUAL);
     map.applyDelete(d);
-    indexValue = map.toIndexValue();
-    expected = KeyValueUtils.composeRowKey(PK, v3.length, Lists.newArrayList(new byte[0], v3));
+    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    expected = CoveredColumnIndexCodec.composeRowKey(PK, v3.length, Lists.newArrayList(new byte[0], v3));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
 
     // reset the map
@@ -184,8 +191,8 @@ public class TestValueMap {
     d = new Delete(PK);
     d.deleteColumn(FAMILY, QUAL);
     map.applyDelete(d);
-    indexValue = map.toIndexValue();
-    expected = KeyValueUtils.composeRowKey(PK, v3.length, Lists.newArrayList(new byte[0], v3));
+    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    expected = CoveredColumnIndexCodec.composeRowKey(PK, v3.length, Lists.newArrayList(new byte[0], v3));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
   }
 }
