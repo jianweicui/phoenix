@@ -88,9 +88,6 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
 
   private static final Log LOG = LogFactory.getLog(CoveredColumnIndexer.class);
 
-  public static final byte[] INDEX_ROW_COLUMN_FAMILY = Bytes.toBytes("ROW");
-  // static final byte[] INDEX_REMAINING_COLUMN_FAMILY = Bytes.toBytes("REMAINING");
-
   /** Empty put that has no information - used to build index delete markers */
   private static final Put EMPTY_PUT = new Put();
 
@@ -103,7 +100,7 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
   public static void createIndexTable(HBaseAdmin admin, String indexTable) throws IOException {
     HTableDescriptor index = new HTableDescriptor(indexTable);
     // index.addFamily(new HColumnDescriptor(INDEX_REMAINING_COLUMN_FAMILY));
-    index.addFamily(new HColumnDescriptor(INDEX_ROW_COLUMN_FAMILY));
+    index.addFamily(new HColumnDescriptor(CoveredColumnIndexCodec.INDEX_ROW_COLUMN_FAMILY));
 
     admin.createTable(index);
   }
@@ -172,34 +169,16 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
   private void getMutationsForPut(Map<Mutation, String> mutations, ColumnGroup group,
       long timestamp, Result currentRow, Put pendingUpdate, boolean customTimestamp) {
     String table = group.getTable();
-    byte[] row = currentRow.getRow();
-    ValueMap map = new ValueMap(group, row);
-    ValueMap allEdits = map.clone();
 
-    // add just the index update for the group to the map
-    for (CoveredColumn column : group) {
-      // this already filters out things that don't match the specified group, so we don't need to
-      // do any extra filtering
-      allEdits.addToMap(pendingUpdate.getFamilyMap().get(Bytes.toBytes(column.family)));
-    }
+    // we could try bulding the index update from just the put, but all the components are probably
+    // not covered by the Put, so we spend a bunch of time checking the Put when we are going to
+    // need to look at the current row anyways.
 
-    // sort the keys so we get the correct ordering in the returned values
-    // this is a little bit heavy weight, but we shouldn't have a ton and we can come back and fix
-    // this later if its too expensive.
-    List<ImmutableBytesWritable> sorted = allEdits.getSortedKeys();
+    CoveredColumnIndexCodec codec = new CoveredColumnIndexCodec(currentRow, group);
+    codec.addUpdate(pendingUpdate);
 
-    // we could try to build the row key now, but its probably not fully covered by the put (we can
-    // add an option to try it first, if we want). That means we would waste a bunch of cycles
-    // building the row key that isn't likely to be used.
-
-    // add the current row to the values
-    allEdits.addToMap(currentRow.list());
-    byte[] indexRow = CoveredColumnIndexCodec.toIndexRowKey(sorted, allEdits);
-    Put indexInsert = new Put(indexRow);
-
-    // update the index update with the current elements
-    CoveredColumnIndexCodec.addColumnsToIndexUpdate(indexInsert,
-      CoveredColumnIndexer.INDEX_ROW_COLUMN_FAMILY, timestamp, group, sorted, allEdits);
+    // update the index with the timestamp specified by the put
+    Put indexInsert = codec.getPutToIndex(timestamp);
     mutations.put(indexInsert, table);
 
     // generally, the current Put will be the most recent thing to be added. In that case, all we
@@ -216,7 +195,7 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
      */
     if (customTimestamp) {
       // figure out if the current row actually has anything newer for the column group we are interested in
-      long maxTs = Long.MIN_VALUE;
+      long maxTs = timestamp;
       for(CoveredColumn column: group) {
         Predicate<KeyValue> familyPredicate = column.getColumnFamilyPredicate();
         Predicate<KeyValue> qualifierPredicate = column.getColumnFamilyPredicate();
@@ -230,8 +209,11 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
       }
 
       // there are some columns that are newer than the pending update, so we need to figure out
-      // the update to make up to (and including) the pending write, but no further
-      if (maxTs > timestamp) 
+      // the update to make up to (and including) the pending write. The index update for the
+      // previous row (before the update is applied) was already handled by the more recent update
+      // (the one that caused us to go through this extra step), so we just need to figure out how
+      // to use our data
+      if (maxTs > timestamp) {
         //TODO switch this to using a valueMap
         deleteRow = CoveredColumnIndexCodec.buildOlderDeleteRowKey(pendingUpdate, currentRow,
           maxTs, group);

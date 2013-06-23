@@ -21,10 +21,12 @@ import org.apache.hadoop.hbase.util.Pair;
 
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
-import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multiset;
+import com.google.common.collect.Ordering;
+import com.google.common.collect.SortedSetMultimap;
+import com.google.common.collect.TreeMultimap;
 
 /**
  * Essentially a lightweight {@link MemStore} that just manages a single row.This makes it easier to
@@ -34,7 +36,10 @@ import com.google.common.collect.Multiset;
 public class ValueMap {
   // TODO look into switching this class out for a real MemStore - its far more likely to be correct
   // and potentially could be shared across index calls, though with some overhead.
-  ArrayListMultimap<ImmutableBytesWritable, KeyValue> values = ArrayListMultimap.create();
+  // using this keeps all the keys sorted in each pair, so we can then handle point in time queries
+  // correctly
+  SortedSetMultimap<ImmutableBytesWritable, KeyValue> values = TreeMultimap.create(
+    Ordering.natural(), KeyValue.COMPARATOR);
   private ColumnGroup group;
   private byte[] pk;
 
@@ -103,8 +108,8 @@ public class ValueMap {
         case DeleteColumn:
           // single family:column pair being deleted - removes all instances older than the given
           // timestamp
-          List<KeyValue> kvs = values.get(key);
-          List<KeyValue> toRemove = new ArrayList<KeyValue>(kvs.size());
+          Collection<KeyValue> kvs = values.get(key);
+          Collection<KeyValue> toRemove = new ArrayList<KeyValue>(kvs.size());
           for (KeyValue stored : kvs) {
             if (stored.getTimestamp() < kv.getTimestamp()) {
               toRemove.add(stored);

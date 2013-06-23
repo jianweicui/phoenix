@@ -6,11 +6,14 @@ import java.util.List;
 import javax.annotation.Nullable;
 
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.regionserver.MemStore;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 
@@ -24,10 +27,80 @@ import com.google.common.collect.Iterables;
  */
 public class CoveredColumnIndexCodec {
   private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
-  
-  public static byte[] toIndexQualifier(CoveredColumn column) {
-      return ArrayUtils.addAll(Bytes.toBytes(column.family + CoveredColumn.SEPARATOR), column.qualifier);
+  public static final byte[] INDEX_ROW_COLUMN_FAMILY = Bytes.toBytes("ROW");
+  private static Configuration conf = HBaseConfiguration.create();
+  {
+    // keep it all on the heap - hopefully this should be a bit faster and shouldn't need to grow
+    // very large as we are just handling a single row.
+    conf.setBoolean("hbase.hregion.memstore.mslab.enabled", false);
+  }
+  private ValueMap valueMap;
+  private List<ImmutableBytesWritable> sorted;
+  private ColumnGroup group;
+  private MemStore memstore;
+
+  public CoveredColumnIndexCodec(Result currentRow, ColumnGroup group) {
+    this.group = group;
+    this.valueMap = new ValueMap(group, currentRow.getRow());
+    this.valueMap.addToMap(currentRow.list());
+    // sort the keys so we get the correct ordering in the returned values
+    // this is a little bit heavy weight, but we shouldn't have a ton and we can come back and fix
+    // this later if its too expensive.
+    this.sorted = valueMap.getSortedKeys();
+    // then set properties to get the expected behavior
+    this.memstore = new MemStore();
+    // add the current row the memstore
+    this.memstore.upsert(currentRow.list());
+  }
+
+  /**
+   * Add a {@link Put} to the values stored for the current row
+   * @param pendingUpdate pending update to the current row - will appear first in the
+   *          {@link ValueMap}.
+   */
+  public void addUpdate(Put pendingUpdate) {
+    // add just the index update for the group to the map
+    for (CoveredColumn column : group) {
+      // this already filters out things that don't match the specified group, so we don't need to
+      // do any extra filtering
+      valueMap.addToMap(pendingUpdate.getFamilyMap().get(Bytes.toBytes(column.family)));
     }
+  }
+
+  /**
+   * Get the most recent value for each column group, in the order of the columns stored in the
+   * group and then build them into a single byte array to use as the prefix for an index update for
+   * the column group.
+   * @return
+   */
+  public byte[] toIndexRowKey() {
+    int length = 0;
+    List<byte[]> topValues = new ArrayList<byte[]>();
+    for (CoveredColumn column : group) {
+      List<byte[]> values = valueMap.getValues(sorted, column);
+      for (int i = 0; i < values.size(); i++) {
+        byte[] value = values.get(i);
+        if (value == null) {
+          value = EMPTY_BYTE_ARRAY;
+        }
+        length += value.length;
+        topValues.add(value);
+      }
+    }
+
+    return CoveredColumnIndexCodec.composeRowKey(valueMap.primaryKey(), length, topValues);
+  }
+
+  /**
+   * @param timestamp
+   * @return
+   */
+  public Put getPutToIndex(long timestamp) {
+    byte[] indexRow = this.toIndexRowKey();
+    Put indexInsert = new Put(indexRow);
+    this.addColumnsToIndexUpdate(indexInsert, timestamp);
+    return indexInsert;
+  }
 
   /**
    * Add each {@link ColumnGroup} to a {@link Put} under a single column family. Each value stored
@@ -50,9 +123,7 @@ public class CoveredColumnIndexCodec {
    * @param sortedKeys a collection of the keys from the {@link ValueMap} that can be used to search
    *          the value may for a given group.
    */
-  public static void addColumnsToIndexUpdate(final Put indexInsert, final byte[] family,
-      final long timestamp, ColumnGroup group, Iterable<ImmutableBytesWritable> sortedKeys,
-      ValueMap values) {
+  private void addColumnsToIndexUpdate(final Put indexInsert, final long timestamp) {
     final int[] count = new int[] { 0 };
     // for each valid match, add a column qualifier under the specified family to the put that is:
     // <i><FAMILY><QUALIFIER>
@@ -60,18 +131,23 @@ public class CoveredColumnIndexCodec {
       @Override
       @Nullable
       public Void apply(@Nullable Pair<ImmutableBytesWritable, CoveredColumn> input) {
-        indexInsert.add(family,
+        indexInsert.add(INDEX_ROW_COLUMN_FAMILY,
           ArrayUtils.addAll(Bytes.toBytes(count[0]++), toIndexQualifier(input.getSecond())),
           timestamp, null);
         return null;
       }
     };
 
-
     // do the application for matches
     for (CoveredColumn column : group) {
-      ValueMap.applyChangesForMatchingColumns(apply, sortedKeys, column);
+      ValueMap
+.applyChangesForMatchingColumns(apply, sorted, column);
     }
+  }
+
+  private static byte[] toIndexQualifier(CoveredColumn column) {
+    return ArrayUtils.addAll(Bytes.toBytes(column.family + CoveredColumn.SEPARATOR),
+      column.qualifier);
   }
 
   /**
@@ -81,7 +157,7 @@ public class CoveredColumnIndexCodec {
    * @param values to use when building the key
    * @return
    */
-  protected static byte[] composeRowKey(byte[] pk, int length, List<byte[]> values) {
+  private static byte[] composeRowKey(byte[] pk, int length, List<byte[]> values) {
     // now build up expected row key, each of the values, in order, followed by the PK and then some
     // info about lengths so we can deserialize each value
     byte[] output = new byte[length + pk.length];
@@ -137,30 +213,6 @@ public class CoveredColumnIndexCodec {
   }
 
   /**
-   * Get the most recent value for each column group, in the order of the columns stored in the
-   * group and then build them into a single byte array to use as the prefix for an index update for
-   * the column group.
-   * @return
-   */
-  public static byte[] toIndexRowKey(List<ImmutableBytesWritable> sorted, ValueMap map) {
-    int length = 0;
-    List<byte[]> topValues = new ArrayList<byte[]>();
-    for (CoveredColumn column : map.getGroup()) {
-      List<byte[]> values = map.getValues(sorted, column);
-      for (int i = 0; i < values.size(); i++) {
-        byte[] value = values.get(i);
-        if (value == null) {
-          value = EMPTY_BYTE_ARRAY;
-        }
-        length += value.length;
-        topValues.add(value);
-      }
-    }
-
-    return CoveredColumnIndexCodec.composeRowKey(map.primaryKey(), length, topValues);
-  }
-
-  /**
    * Build the row key for the current group based on the updated key-values and the given current
    * row.
    * @param p the pending update
@@ -168,7 +220,7 @@ public class CoveredColumnIndexCodec {
    * @return expected row key, each of the values, in order, followed by the PK and then some info
    *         about lengths so we can deserialize each value
    */
-  public static byte[] buildRowKey(Mutation p, Result currentRow, ColumnGroup columns) {
+  public byte[] buildRowKey(Mutation p, Result currentRow, ColumnGroup columns) {
     // for each column, find the matching value, if one exists. Each column will get a value, even
     // if one isn't currently stored in the table or the passed element
     List<byte[]> values = new ArrayList<byte[]>();
@@ -279,6 +331,5 @@ public class CoveredColumnIndexCodec {
     public boolean apply(@Nullable KeyValue input) {
       return input != null && input.getTimestamp() <= ts;
     }
-  };
-
+  }
 }
