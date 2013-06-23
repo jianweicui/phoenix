@@ -88,6 +88,13 @@ public class CoveredColumn {
   }
 
   /**
+   * @return <tt>true</tt> if this should include all column qualifiers, <tt>false</tt> otherwise
+   */
+  public boolean allColumns() {
+    return this.qualifier == null;
+  }
+
+  /**
    * @param qualifier2
    */
   public boolean matchesQualifier(byte[] qual) {

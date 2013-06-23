@@ -1,6 +1,7 @@
 package com.salesforce.hbase.index.builder.covered;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,6 +23,11 @@ public class TestCoveredColumnIndexCodec {
   private static final String FAMILY_STRING = "family";
   private static final byte[] FAMILY = Bytes.toBytes(FAMILY_STRING);
   private static final byte[] QUAL = Bytes.toBytes("qual");
+
+  @Test
+  public void toFromIndexKey() throws Exception {
+    fail("Not yet implemented!");
+  }
 
   @Test
   public void testFullColumnSpecification() {

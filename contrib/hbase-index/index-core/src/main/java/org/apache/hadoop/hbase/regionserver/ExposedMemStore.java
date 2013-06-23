@@ -4,7 +4,9 @@ import java.rmi.UnexpectedException;
 import java.util.List;
 import java.util.SortedSet;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.KeyValue.KVComparator;
 
 /**
  * A {@link MemStore} that exposes all the package-protected methods.
@@ -14,6 +16,10 @@ import org.apache.hadoop.hbase.KeyValue;
  * @see MemStore
  */
 public class ExposedMemStore extends MemStore {
+
+  public ExposedMemStore(Configuration conf, KVComparator comparator) {
+    super(conf, comparator);
+  }
 
   @Override
   public void dump() {
