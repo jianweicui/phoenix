@@ -1,6 +1,7 @@
 package com.salesforce.hbase.index.builder.covered;
 
 import java.util.HashMap;
+import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -63,7 +64,22 @@ public class IndexStore {
   public KeyValueScanner getFamilyScanner(byte[] bytes) {
     ImmutableBytesWritable family = new ImmutableBytesWritable(bytes);
     ExposedMemStore store = this.stores.get(family);
+    if(store == null) {
+      return new EmptyKeyValueScanner();
+    }
     return store.getScanners().get(0);
   }
 
+  /**
+   * @param family
+   * @param edits
+   */
+  public void add(byte[] family, List<KeyValue> edits) {
+    ImmutableBytesWritable bytes = new ImmutableBytesWritable(family);
+    ExposedMemStore store = this.stores.get(bytes);
+    store = addIfNotPresent(store, bytes);
+    for(KeyValue kv: edits) {
+      store.add(kv);
+    }
+  }
 }

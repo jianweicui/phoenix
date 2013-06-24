@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import javax.annotation.Nullable;
 
@@ -16,6 +17,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.regionserver.KeyValueScanner;
+import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 
@@ -58,11 +60,10 @@ public class CoveredColumnIndexCodec {
    *          {@link ValueMap}.
    */
   public void addUpdate(Put pendingUpdate) {
-    // add just the index update for the group to the map
-    for (CoveredColumn column : group) {
-      // this already filters out things that don't match the specified group, so we don't need to
-      // do any extra filtering
-      valueMap.addToMap(pendingUpdate.getFamilyMap().get(Bytes.toBytes(column.family)));
+    for (Map.Entry<byte[], List<KeyValue>> e : pendingUpdate.getFamilyMap().entrySet()) {
+      byte[] family = e.getKey();
+      List<KeyValue> edits = e.getValue();
+      this.memstore.add(family, edits);
     }
   }
 
@@ -224,6 +225,12 @@ public class CoveredColumnIndexCodec {
     return ArrayUtils.addAll(output, Bytes.toBytes(values.size()));
   }
 
+  /**
+   * Get the values for each the columns that were stored in the row key, in the order they were
+   * stored.
+   * @param bytes bytes that were written by this codec
+   * @return the list of values for the columns
+   */
   public static List<byte[]> getValues(byte[] bytes) {
     // get the total number of keys in the bytes
     int keyCount = CoveredColumnIndexCodec.getPreviousInteger(bytes, bytes.length);
