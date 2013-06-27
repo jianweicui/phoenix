@@ -1,23 +1,22 @@
 package com.salesforce.hbase.index.builder.covered;
 
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
 import com.google.common.collect.Lists;
 
-/**
- *
- */
 public class TestCoveredColumnIndexCodec {
   private static final byte[] PK = new byte[] { 'a' };
   private static final String FAMILY_STRING = "family";
@@ -26,7 +25,32 @@ public class TestCoveredColumnIndexCodec {
 
   @Test
   public void toFromIndexKey() throws Exception {
-    fail("Not yet implemented!");
+    // start with empty values
+    byte[] indexKey = CoveredColumnIndexCodec
+        .composeRowKey(PK, 0, Collections.<byte[]> emptyList());
+    List<byte[]> stored = CoveredColumnIndexCodec.getValues(indexKey);
+    assertEquals("Found some stored values in an index row key that wasn't created with values!",
+      0, stored.size());
+
+    // a single, empty value
+    indexKey = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
+    stored = CoveredColumnIndexCodec.getValues(indexKey);
+    assertEquals("Found some stored values in an index row key that wasn't created with values!",
+      1, stored.size());
+    assertEquals("Found a non-zero length value: " + Bytes.toString(stored.get(0)), 0,
+      stored.get(0).length);
+
+    // try with a couple values, some different lengthss
+    byte[] v1 = new byte[] { 'a' };
+    byte[] v2 = new byte[] { 'b' };
+    byte[] v3 = Bytes.toBytes("v3");
+    int len = v1.length + v2.length + v3.length;
+    indexKey = CoveredColumnIndexCodec.composeRowKey(PK, len, Arrays.asList(v1, v2, v3));
+    stored = CoveredColumnIndexCodec.getValues(indexKey);
+    assertEquals("Didn't find expected number of values in index key!", 3, stored.size());
+    assertTrue("First index keys don't match!", Bytes.equals(v1, stored.get(0)));
+    assertTrue("Second index keys don't match!", Bytes.equals(v2, stored.get(1)));
+    assertTrue("Third index keys don't match!", Bytes.equals(v3, stored.get(2)));
   }
 
   @Test
@@ -35,7 +59,7 @@ public class TestCoveredColumnIndexCodec {
     CoveredColumn column = new CoveredColumn(FAMILY_STRING, QUAL);
     group.add(column);
 
-    ValueMap map = new ValueMap(group, PK);
+    // setup the kvs to add
     List<KeyValue> kvs = new ArrayList<KeyValue>();
     byte[] v1 = Bytes.toBytes("v1");
     KeyValue kv = new KeyValue(PK, FAMILY, QUAL, 1, v1);
@@ -43,55 +67,59 @@ public class TestCoveredColumnIndexCodec {
     byte[] v2 = Bytes.toBytes("v2");
     kv = new KeyValue(PK, Bytes.toBytes("family2"), QUAL, 1, v2);
     kvs.add(kv);
-    map.addToMap(kvs);
+    Result r = new Result(kvs);
 
-    List<ImmutableBytesWritable> sorted = map.getSortedKeys();
+    // make a new codec on those kvs
+    CoveredColumnIndexCodec codec = new CoveredColumnIndexCodec(r, group);
 
     // simple case - no deletes
-    byte[] indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    byte[] indexValue = codec.getIndexRowKey().getFirst();
     byte[] expected = CoveredColumnIndexCodec.composeRowKey(PK, v1.length, Arrays.asList(v1));
     assertArrayEquals("Didn't get expected index value", expected, indexValue);
 
     // now add a delete that covers that column family
     Delete d = new Delete(PK);
     d.deleteFamily(FAMILY);
-    map.applyDelete(d);
-    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    codec.addUpdate(d);
+    indexValue = codec.getIndexRowKey().getFirst();
     expected = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
 
-    // reset the map
-    map = new ValueMap(group, PK);
-    map.addToMap(kvs);
+    // reset the codec
+    codec = new CoveredColumnIndexCodec(r, group);
 
     // now try with a full column delete
     d = new Delete(PK);
     d.deleteColumns(FAMILY, QUAL);
-    map.applyDelete(d);
-    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    codec.addUpdate(d);
+    indexValue = codec.getIndexRowKey().getFirst();
     expected = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
 
-    // reset the map
-    map = new ValueMap(group, PK);
-    map.addToMap(kvs);
+    // reset the codec
+    codec = new CoveredColumnIndexCodec(r, group);
 
     // now try by deleting the single value
     d = new Delete(PK);
     d.deleteColumn(FAMILY, QUAL);
-    map.applyDelete(d);
-    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    codec.addUpdate(d);
+    indexValue = codec.getIndexRowKey().getFirst();
     expected = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
   }
 
+  /**
+   * Test where we match against all the qualifiers in a single column family with a single stored
+   * famility:qualifier that matches. This is the simpler case to
+   * {@link #testFullyCoveredFamilyWithMultipleStoredColumns()}.
+   */
   @Test
-  public void testOnlySpecifyFamilyWithSingleStoredColumn() {
+  public void testFullyCoveredFamilyWithSingleStoredColumn() {
     ColumnGroup group = new ColumnGroup("testOnlySpecifyFamilyWithSingleStoredColumn");
     CoveredColumn column = new CoveredColumn(FAMILY_STRING, null);
     group.add(column);
 
-    ValueMap map = new ValueMap(group, PK);
+    // setup the underlying data
     List<KeyValue> kvs = new ArrayList<KeyValue>();
     byte[] v1 = Bytes.toBytes("v1");
     KeyValue kv = new KeyValue(PK, FAMILY, QUAL, 1, v1);
@@ -100,55 +128,53 @@ public class TestCoveredColumnIndexCodec {
     kv = new KeyValue(PK, Bytes.toBytes("family2"), QUAL, 1, v2);
     kvs.add(kv);
     kvs.add(kv);
-    map.addToMap(kvs);
+    Result r = new Result(kvs);
 
-    List<ImmutableBytesWritable> sorted = map.getSortedKeys();
+    // setup the codec on those kvs
+    CoveredColumnIndexCodec codec = new CoveredColumnIndexCodec(r, group);
 
     // simple case - no deletes, all columns
-    byte[] indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    byte[] indexValue = codec.getIndexRowKey().getFirst();
     byte[] expected = CoveredColumnIndexCodec.composeRowKey(PK, v1.length, Arrays.asList(v1));
     assertArrayEquals("Didn't get expected index value", expected, indexValue);
 
     // now add a delete that covers that entire column family
     Delete d = new Delete(PK);
     d.deleteFamily(FAMILY);
-    map.applyDelete(d);
-    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    codec.addUpdate(d);
+    indexValue = codec.getIndexRowKey().getFirst();
     expected = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
 
-    // reset the map
-    map = new ValueMap(group, PK);
-    map.addToMap(kvs);
+    // reset the codec
+    codec = new CoveredColumnIndexCodec(r, group);
 
     // now try deleting one of the columns
     d = new Delete(PK);
     d.deleteColumns(FAMILY, QUAL);
-    map.applyDelete(d);
-    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    codec.addUpdate(d);
+    indexValue = codec.getIndexRowKey().getFirst();
     expected = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
 
-    // reset the map
-    map = new ValueMap(group, PK);
-    map.addToMap(kvs);
+    // reset the codec
+    codec = new CoveredColumnIndexCodec(r, group);
 
     // now try by deleting the single value
     d = new Delete(PK);
     d.deleteColumn(FAMILY, QUAL);
-    map.applyDelete(d);
-    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
+    codec.addUpdate(d);
+    indexValue = codec.getIndexRowKey().getFirst();
     expected = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
   }
 
   @Test
-  public void testOnlySpecifyFamilyWithMultipleStoredColumns() {
+  public void testFullyCoveredFamilyWithMultipleStoredColumns() {
     ColumnGroup group = new ColumnGroup("testOnlySpecifyFamilyWithMultipleStoredColumns");
     CoveredColumn column = new CoveredColumn(FAMILY_STRING, null);
     group.add(column);
 
-    ValueMap map = new ValueMap(group, PK);
     List<KeyValue> kvs = new ArrayList<KeyValue>();
     byte[] v1 = Bytes.toBytes("v1");
     KeyValue kv = new KeyValue(PK, FAMILY, QUAL, 1, v1);
@@ -160,45 +186,49 @@ public class TestCoveredColumnIndexCodec {
     byte[] v3 = Bytes.toBytes("v3");
     kv = new KeyValue(PK, FAMILY, Bytes.toBytes("qual2"), 1, v3);
     kvs.add(kv);
-    map.addToMap(kvs);
+    Result r = new Result(kvs);
 
-    List<ImmutableBytesWritable> sorted = map.getSortedKeys();
+    // setup the codec on those kvs
+    CoveredColumnIndexCodec codec = new CoveredColumnIndexCodec(r, group);
 
     // simple case - no deletes, all columns
-    byte[] indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
-    byte[] expected = CoveredColumnIndexCodec.composeRowKey(PK, v1.length + v3.length, Arrays.asList(v1, v3));
+    byte[] indexValue = codec.getIndexRowKey().getFirst();
+    byte[] expected = CoveredColumnIndexCodec.composeRowKey(PK, v1.length + v3.length,
+      Arrays.asList(v1, v3));
     assertArrayEquals("Didn't get expected index value", expected, indexValue);
 
     // now add a delete that covers that entire column family
     Delete d = new Delete(PK);
     d.deleteFamily(FAMILY);
-    map.applyDelete(d);
-    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
-    expected = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0], new byte[0]));
+    codec.addUpdate(d);
+    indexValue = codec.getIndexRowKey().getFirst();
+    expected = CoveredColumnIndexCodec.composeRowKey(PK, 0, Lists.newArrayList(new byte[0]));
     assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
 
-    // reset the map
-    map = new ValueMap(group, PK);
-    map.addToMap(kvs);
+    // reset the codec
+    codec = new CoveredColumnIndexCodec(r, group);
 
     // now try deleting one of the columns
     d = new Delete(PK);
     d.deleteColumns(FAMILY, QUAL);
-    map.applyDelete(d);
-    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
-    expected = CoveredColumnIndexCodec.composeRowKey(PK, v3.length, Lists.newArrayList(new byte[0], v3));
-    assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
+    codec.addUpdate(d);
+    indexValue = codec.getIndexRowKey().getFirst();
+    expected = CoveredColumnIndexCodec.composeRowKey(PK, v3.length,
+      Lists.newArrayList(new byte[0], v3));
+    assertArrayEquals("Deleting columns didn't specify null value as expected", expected,
+      indexValue);
 
-    // reset the map
-    map = new ValueMap(group, PK);
-    map.addToMap(kvs);
+    // reset the codec
+    codec = new CoveredColumnIndexCodec(r, group);
 
     // now try by deleting the single value
     d = new Delete(PK);
     d.deleteColumn(FAMILY, QUAL);
-    map.applyDelete(d);
-    indexValue = CoveredColumnIndexCodec.toIndexRowKey(sorted, map);
-    expected = CoveredColumnIndexCodec.composeRowKey(PK, v3.length, Lists.newArrayList(new byte[0], v3));
-    assertArrayEquals("Deleting family didn't specify null value as expected", expected, indexValue);
+    codec.addUpdate(d);
+    indexValue = codec.getIndexRowKey().getFirst();
+    expected = CoveredColumnIndexCodec.composeRowKey(PK, v3.length,
+      Lists.newArrayList(new byte[0], v3));
+    assertArrayEquals("Deleting col:qual didn't specify null value as expected", expected,
+      indexValue);
   }
 }

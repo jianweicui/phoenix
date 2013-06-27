@@ -1,4 +1,4 @@
-package com.salesforce.hbase.index.builder.covered;
+package com.salesforce.hbase.index.builder.covered.util;
 
 import java.util.Arrays;
 

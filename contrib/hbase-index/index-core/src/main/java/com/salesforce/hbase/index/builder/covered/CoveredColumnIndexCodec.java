@@ -6,8 +6,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import javax.annotation.Nullable;
-
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -15,14 +13,17 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.filter.BinaryComparator;
+import org.apache.hadoop.hbase.filter.Filter;
+import org.apache.hadoop.hbase.filter.FilterList;
+import org.apache.hadoop.hbase.regionserver.ExposedMemStore;
 import org.apache.hadoop.hbase.regionserver.KeyValueScanner;
-import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 
-import com.google.common.base.Predicate;
-import com.google.common.collect.Iterables;
+import com.salesforce.hbase.index.builder.covered.util.FamilyOnlyFilter;
+import com.salesforce.hbase.index.builder.covered.util.FilteredKeyValueScanner;
+import com.salesforce.hbase.index.builder.covered.util.NewerTimestampFilter;
 
 /**
  * Handle serialization to/from a column-covered index.
@@ -31,27 +32,34 @@ import com.google.common.collect.Iterables;
 public class CoveredColumnIndexCodec {
   private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
   public static final byte[] INDEX_ROW_COLUMN_FAMILY = Bytes.toBytes("ROW");
-  private static Configuration conf = HBaseConfiguration.create();
+  private static final Configuration conf = HBaseConfiguration.create();
   {
     // keep it all on the heap - hopefully this should be a bit faster and shouldn't need to grow
     // very large as we are just handling a single row.
     conf.setBoolean("hbase.hregion.memstore.mslab.enabled", false);
   }
-  private ValueMap valueMap;
-  private List<ImmutableBytesWritable> sorted;
+
   private ColumnGroup group;
-  private IndexStore memstore;
+  private ExposedMemStore memstore;
+  private byte[] pk;
 
   public CoveredColumnIndexCodec(Result currentRow, ColumnGroup group) {
+    this.pk = currentRow.getRow();
     this.group = group;
-    this.valueMap = new ValueMap(group, currentRow.getRow());
-    this.valueMap.addToMap(currentRow.list());
-    // sort the keys so we get the correct ordering in the returned values
-    // this is a little bit heavy weight, but we shouldn't have a ton and we can come back and fix
-    // this later if its too expensive.
-    this.sorted = valueMap.getSortedKeys();
-    // then set properties to get the expected behavior
-    this.memstore = new IndexStore(currentRow);
+    this.memstore = new ExposedMemStore(conf, KeyValue.COMPARATOR);
+    addAll(currentRow.list());
+  }
+
+  /**
+   * Add all the {@link KeyValue}s in the list to the memstore. This is just a small utility method
+   * around {@link ExposedMemStore#add(KeyValue)} to make it easier to deal with batches of
+   * {@link KeyValue}s.
+   * @param list keyvalues to add
+   */
+  private void addAll(List<KeyValue> list) {
+    for (KeyValue kv : list) {
+      this.memstore.add(kv);
+    }
   }
 
   /**
@@ -59,28 +67,50 @@ public class CoveredColumnIndexCodec {
    * @param pendingUpdate pending update to the current row - will appear first in the
    *          {@link ValueMap}.
    */
-  public void addUpdate(Put pendingUpdate) {
+  public void addUpdate(Mutation pendingUpdate) {
     for (Map.Entry<byte[], List<KeyValue>> e : pendingUpdate.getFamilyMap().entrySet()) {
-      byte[] family = e.getKey();
       List<KeyValue> edits = e.getValue();
-      this.memstore.add(family, edits);
+      addAll(edits);
     }
   }
 
   /**
    * Get the most recent value for each column group, in the order of the columns stored in the
-   * group and then build them into a single byte array to use as the prefix for an index update for
+   * group and then build them into a single byte array to use as row key for an index update for
    * the column group.
    * @return the row key and the corresponding list of {@link CoveredColumn}s to the position of
    *         their value in the row key
    */
-  public Pair<byte[], List<CoveredColumn>> toIndexRowKey() {
-    // get the first row of each group, as we find them
-    List<CoveredColumn> columns = new ArrayList<CoveredColumn>();
+  public Pair<byte[], List<CoveredColumn>> getIndexRowKey() {
+    return getIndexRowKey(Long.MAX_VALUE);
+  }
+
+  /**
+   * Get the most recent value for each column group, less than the specified timestamps, in the
+   * order of the columns stored in the group and then build them into a single byte array to use as
+   * the row key for an index update for the column group.
+   * @return the row key and the corresponding list of {@link CoveredColumn}s to the position of
+   *         their value in the row key
+   */
+  public Pair<byte[], List<CoveredColumn>> getIndexRowKey(long timestamp) {
     int length = 0;
     List<byte[]> topValues = new ArrayList<byte[]>();
+    // columns that match against values, as we find them
+    List<CoveredColumn> columns = new ArrayList<CoveredColumn>();
+
+    // filter out the for anything older than what we want
+    NewerTimestampFilter timestamps = new NewerTimestampFilter(timestamp);
+
+    // go through each group,in order, to find the matching value (or none)
     for (CoveredColumn column : group) {
-      KeyValueScanner scanner = memstore.getFamilyScanner(Bytes.toBytes(column.family));
+      final byte[] family = Bytes.toBytes(column.family);
+      // filter families that aren't what we are looking for
+      FamilyOnlyFilter familyFilter = new FamilyOnlyFilter(new BinaryComparator(family));
+      // join the filters so we only include things that match both (correct family and the TS is
+      // older than the given ts)
+      Filter filter = new FilterList(timestamps, familyFilter);
+      KeyValueScanner scanner = new FilteredKeyValueScanner(filter, this.memstore);
+
       /*
        * now we have two possibilities. (1) the CoveredColumn has a specific column - this is the
        * easier one, we can just seek down to that keyvalue and then pull the next one out. If there
@@ -89,9 +119,9 @@ public class CoveredColumnIndexCodec {
        * mapping if its the first key
        */
 
-      // this matches either case - all CQs or a single one
-      KeyValue first = KeyValue.createFirstOnRow(this.valueMap.primaryKey(),
-        Bytes.toBytes(column.family), column.qualifier);
+      // key to seek. We can only seek to the family because we may have a family delete on top that
+      // covers everything below it, which we would miss if we seek right to the family:qualifier
+      KeyValue first = KeyValue.createFirstOnRow(pk, Bytes.toBytes(column.family), null);
       try {
         // seek to right before the key in the scanner
         byte[] value = EMPTY_BYTE_ARRAY;
@@ -105,48 +135,64 @@ public class CoveredColumnIndexCodec {
         byte[] prevCol = null;
         // not null because seek() returned true
         KeyValue next = scanner.next();
+        boolean done = false;
         do {
           byte[] qual = next.getQualifier();
-          // check to see if it matches the current column, might be single or multi-column that
-          // matches
-          if (column.matchesQualifier(qual)) {
-            // if we are matching against all columns, we need to make sure we only get the first
-            // entry for each qualifier
-            if (prevCol == null || !Bytes.equals(prevCol, qual)) {
-              value = next.getValue();
-              prevCol = qual;
-            } else {
-              continue;
-            }
-          } else {
-            // this must be a single column that we are matching against, so we have to inject a
-            // null into the value list and then we are done with this column
+          boolean columnMatches = column.matchesQualifier(qual);
+
+          /*
+           * check delete to see if we can just replace this with a single delete if its a family
+           * delete then we have deleted all columns and are definitely done with this
+           * coveredcolumn. This works because deletes will always sort first, so we can be sure
+           * that if we see a delete, we can skip everything else.
+           */
+          if (next.isDeleteFamily()) {
+            // count it as a non-match for all rows, so we add a single null for the entire column
             value = EMPTY_BYTE_ARRAY;
+            break;
+          } else if (columnMatches) {
+            // we are deleting a single column/kv
+            if (next.isDelete()) {
+              value = EMPTY_BYTE_ARRAY;
+            } else {
+              value = next.getValue();
+            }
+            done = true;
+            // we are covering a single column, then we are done.
+            if (column.allColumns()) {
+              /*
+               * we are matching all columns, so we need to make sure that this is a new qualifier.
+               * If its a new qualifier, then we want to add that value, but otherwise we can skip
+               * ahead to the next key.
+               */
+              if (prevCol == null || !Bytes.equals(prevCol, qual)) {
+                prevCol = qual;
+              } else {
+                continue;
+              }
+            }
           }
 
-          // add the array to the lsit
+          // add the array to the list
           length += value.length;
           topValues.add(value);
           columns.add(column);
           // only go around again if there is more data and we are matching against all column
-        } while ((next = scanner.next()) != null && column.allColumns());
+        } while ((!done || column.allColumns()) && (next = scanner.next()) != null);
+
+        // we never found a match, so we need to add an empty entry
+        if (!done) {
+          length += value.length;
+          topValues.add(value);
+          columns.add(column);
+        }
+
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
-
-      // old way
-      List<byte[]> values = valueMap.getValues(sorted, column);
-      for (int i = 0; i < values.size(); i++) {
-        byte[] value = values.get(i);
-        if (value == null) {
-          value = EMPTY_BYTE_ARRAY;
-        }
-        length += value.length;
-        topValues.add(value);
-      }
     }
 
-    byte[] key = CoveredColumnIndexCodec.composeRowKey(valueMap.primaryKey(), length, topValues);
+    byte[] key = CoveredColumnIndexCodec.composeRowKey(pk, length, topValues);
     return new Pair<byte[], List<CoveredColumn>>(key, columns);
   }
 
@@ -173,7 +219,7 @@ public class CoveredColumnIndexCodec {
    *          the value may for a given group.
    */
   public Put getPutToIndex(long timestamp) {
-    Pair<byte[], List<CoveredColumn>> indexRow = this.toIndexRowKey();
+    Pair<byte[], List<CoveredColumn>> indexRow = this.getIndexRowKey();
     Put indexInsert = new Put(indexRow.getFirst());
     // add each of the corresponding families to the put
     int count = 0;
@@ -193,10 +239,10 @@ public class CoveredColumnIndexCodec {
   /**
    * Compose the final index row key.
    * <p>
-   * This is faster than adding each value indepenently as we can just build a single a array and
+   * This is faster than adding each value independently as we can just build a single a array and
    * copy everything over once.
    * @param pk primary key of the original row
-   * @param length number of bytes in all the values that should be added
+   * @param length total number of bytes of all the values that should be added
    * @param values to use when building the key
    * @return
    */
@@ -226,8 +272,9 @@ public class CoveredColumnIndexCodec {
   }
 
   /**
-   * Get the values for each the columns that were stored in the row key, in the order they were
-   * stored.
+   * Get the values for each the columns that were stored in the row key from calls to
+   * {@link #getPutToIndex(long)} or {@link #composeRowKey(byte[], int, List)}, in the order they
+   * were stored.
    * @param bytes bytes that were written by this codec
    * @return the list of values for the columns
    */
@@ -280,128 +327,7 @@ public class CoveredColumnIndexCodec {
    *          would try to read an integer from 21 -> 25
    * @return an integer from the proceeding {@value Bytes#SIZEOF_INT} bytes, if it exists.
    */
-  static int getPreviousInteger(byte[] bytes, int start) {
+  private static int getPreviousInteger(byte[] bytes, int start) {
     return Bytes.toInt(bytes, start - Bytes.SIZEOF_INT);
-  }
-
-  /**
-   * Build the row key for the current group based on the updated key-values and the given current
-   * row.
-   * @param p the pending update
-   * @param currentRow the state of the current row, possibly a lazy version
-   * @return expected row key, each of the values, in order, followed by the PK and then some info
-   *         about lengths so we can deserialize each value
-   */
-  public byte[] buildRowKey(Mutation p, Result currentRow, ColumnGroup columns) {
-    // for each column, find the matching value, if one exists. Each column will get a value, even
-    // if one isn't currently stored in the table or the passed element
-    List<byte[]> values = new ArrayList<byte[]>();
-    int length = 0;
-    for (CoveredColumn column : columns) {
-      // check the put first
-      boolean found = false;
-      byte[] familyBytes = Bytes.toBytes(column.family);
-      // filter down the keyvalues based on matching families
-      for (KeyValue kv : Iterables.filter(p.getFamilyMap().get(familyBytes),
-        column.getColumnQualifierPredicate())) {
-        byte[] value = kv.getValue();
-        if (value == null) {
-          value = EMPTY_BYTE_ARRAY;
-        }
-        values.add(value);
-        length += value.length;
-        found = true;
-      }
-
-      // found the update in the put, so don't need to search the current state
-      if (found) {
-        continue;
-      }
-
-      // get the latest value for the column from the current row
-      byte[] value = currentRow.getColumnLatest(familyBytes, column.qualifier).getValue();
-      if (value == null) {
-        value = EMPTY_BYTE_ARRAY;
-      }
-      values.add(value);
-      length += value.length;
-    }
-    return CoveredColumnIndexCodec.composeRowKey(p.getRow(), length, values);
-  }
-
-  /**
-   * Build a row key for a delete to the index where all keys must be <= the specified timestamps
-   * @param pending
-   * @param current
-   * @param newestTs
-   * @return
-   */
-  public static byte[] buildOlderDeleteRowKey(Put pending, Result current, final long newestTs,
-      ColumnGroup columns) {
-    OlderTimestamps pred = new OlderTimestamps(newestTs);
-    // for each column, find the matching value, if one exists. Each column will get a value, even
-    // if one isn't currently stored in the table or the passed element
-    List<byte[]> values = new ArrayList<byte[]>();
-    int length = 0;
-    for (CoveredColumn column : columns) {
-      // check the put first
-      boolean found = false;
-      byte[] familyBytes = Bytes.toBytes(column.family);
-      // filter down the keyvalues based on matching families
-      Predicate<KeyValue> qualPredicate = column.getColumnQualifierPredicate();
-      for (KeyValue kv : Iterables.filter(pending.getFamilyMap().get(familyBytes), qualPredicate)) {
-        byte[] value = kv.getValue();
-        if (value == null) {
-          value = EMPTY_BYTE_ARRAY;
-        }
-        values.add(value);
-        length += value.length;
-        found = true;
-      }
-
-      // found the update in the put, so don't need to search the current state
-      if (found) {
-        continue;
-      }
-
-      // this is the different bit from above - we have to find the newest matching column with an
-      // older that the one specified
-      // first filter one family
-      Iterable<KeyValue> kvs = Iterables.filter(current.list(), column.getColumnFamilyPredicate());
-      // then on qualifier
-      kvs = Iterables.filter(kvs, qualPredicate);
-      // finally on timestamp
-      kvs = Iterables.filter(kvs, pred);
-      // anything left must match, we just need to find the most recent
-      KeyValue first = null;
-      for (KeyValue kv : kvs) {
-        first = kv;
-        break;
-      }
-      byte[] value;
-      // didn't find a keyvalue for the family/qualifier at that timestamp, so must be a null
-      // specifier
-      if (first == null) {
-        value = EMPTY_BYTE_ARRAY;
-      } else {
-        value = first.getValue();
-      }
-      values.add(value);
-      length += value.length;
-    }
-    return CoveredColumnIndexCodec.composeRowKey(pending.getRow(), length, values);
-  }
-
-  private static class OlderTimestamps implements Predicate<KeyValue> {
-    private final long ts;
-
-    public OlderTimestamps(long ts) {
-      this.ts = ts;
-    }
-
-    @Override
-    public boolean apply(@Nullable KeyValue input) {
-      return input != null && input.getTimestamp() <= ts;
-    }
   }
 }
