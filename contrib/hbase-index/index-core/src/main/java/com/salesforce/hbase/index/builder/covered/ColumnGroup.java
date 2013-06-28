@@ -69,4 +69,8 @@ public class ColumnGroup implements Iterable<CoveredColumn> {
   public Iterator<CoveredColumn> iterator() {
     return columns.iterator();
   }
+
+  public CoveredColumn get(int index) {
+    return this.columns.get(index);
+  }
 }

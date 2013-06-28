@@ -99,23 +99,42 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
     admin.createTable(index);
   }
 
-  protected HTableInterface localTable;
+  private volatile HTableInterface localTable;
   private List<ColumnGroup> groups;
+  private RegionCoprocessorEnvironment env;
 
   @Override
   public void setup(RegionCoprocessorEnvironment env) throws IOException {
     groups = CoveredColumnIndexSpecifierBuilder.getColumns(env.getConfiguration());
-    localTable = env.getTable(env.getRegion().getTableDesc().getName());
+    this.env = env;
   }
 
   // TODO we loop through all the keyvalues for the row a few times - we should be able to do better
 
+  /**
+   * Ensure we have a connection to the local table. We need to do this after
+   * {@link #setup(RegionCoprocessorEnvironment)} because we are created on region startup and the
+   * table isn't offically open until later.
+   * @throws IOException
+   */
+  private void ensureLocalTable() throws IOException {
+    if (this.localTable == null) {
+      synchronized (this) {
+        if (this.localTable == null) {
+          localTable = env.getTable(env.getRegion().getTableDesc().getName());
+        }
+      }
+    }
+  }
+
   @Override
   public Map<Mutation, String> getIndexUpdate(Put p) throws IOException {
-    // if not columns to index, we are done and don't do anything special
+    // if not columns to index, we are done
     if (groups == null || groups.size() == 0) {
       return Collections.emptyMap();
     }
+
+    ensureLocalTable();
 
     // get the current state of the row in our table. We will always need to do this to cleanup the
     // index, so we might as well do this up front
@@ -196,10 +215,12 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
 
   @Override
   public Map<Mutation, String> getIndexUpdate(Delete d) throws IOException {
-    // if not columns to index, we are done and don't do anything special
+    // if not columns to index, we are done
     if (groups == null || groups.size() == 0) {
       return Collections.emptyMap();
     }
+
+    ensureLocalTable();
 
     // stores all the return values
     Map<Mutation, String> updateMap = new HashMap<Mutation, String>();

@@ -14,6 +14,8 @@ import com.salesforce.hbase.index.IndexUtil;
 
 /**
  * Helper to build the configuration for the {@link CoveredColumnIndexer}.
+ * <p>
+ * This class is NOT thread-safe; all concurrent access must be managed externally.
  */
 public class CoveredColumnIndexSpecifierBuilder {
 
@@ -30,24 +32,60 @@ public class CoveredColumnIndexSpecifierBuilder {
   // right now, we don't support this should be easy enough to add later
   // private static final String INDEX_GROUP_FULLY_COVERED = ".covered";
 
-  Map<String, String> specs = new HashMap<String, String>();
+  List<ColumnGroup> groups = new ArrayList<ColumnGroup>();
 
   /**
    * Add a group of columns to index
    * @param columns Pairs of cf:cq (full specification of a column) to index
-   * @return the group number of the index configuration. This can be used to remove a group later
+   * @return the index of the group. This can be used to remove or modify the group via
+   *         {@link #remove(int)} or {@link #get(int)}, any time before building
    */
   public int addIndexGroup(ColumnGroup columns) {
     if (columns == null || columns.size() == 0) {
       throw new IllegalArgumentException("Must specify some columns to index!");
     }
-    // hbase.index.covered.groups = i
-    String index = specs.get(INDEX_GROUPS_COUNT_KEY); 
-    int currentCount = Integer.parseInt(index == null ? "-1" : index);
-    int next = currentCount++;
+    int size = this.groups.size();
+    this.groups.add(columns);
+    return size;
+  }
 
+  public void remove(int i) {
+    this.groups.remove(i);
+  }
+
+  public ColumnGroup get(int i) {
+    return this.groups.get(i);
+  }
+
+  /**
+   * Clear the stored {@link ColumnGroup}s for resuse.
+   */
+  public void reset() {
+    this.groups.clear();
+  }
+
+  Map<String, String> convertToMap() {
+    Map<String, String> specs = new HashMap<String, String>();
+    int total = this.groups.size();
+    // hbase.index.covered.groups = i
+    specs.put(INDEX_GROUPS_COUNT_KEY, Integer.toString(total));
+
+    int i = 0;
+    for (ColumnGroup group : groups) {
+      addIndexGroupToSpecs(specs, group, i++);
+    }
+
+    return specs;
+  }
+
+  /**
+   * @param specs
+   * @param columns
+   * @param index
+   */
+  private void addIndexGroupToSpecs(Map<String, String> specs, ColumnGroup columns, int index) {
     // hbase.index.covered.group.<i>
-    String prefix = INDEX_GROUP_PREFIX + Integer.toString(next);
+    String prefix = INDEX_GROUP_PREFIX + Integer.toString(index);
 
     // set the table to which the group writes
     // hbase.index.covered.group.<i>.table
@@ -69,15 +107,10 @@ public class CoveredColumnIndexSpecifierBuilder {
       specs.put(nextKey, nextValue);
       i++;
     }
-
-    // update the group count
-    // hbase.index.covered.groups = i++
-    specs.put(INDEX_GROUPS_COUNT_KEY, Integer.toString(next));
-    return next;
   }
 
-  public void setupIndexing(HTableDescriptor desc) throws IOException {
-    IndexUtil.enableIndexing(desc, CoveredColumnIndexer.class, specs);
+  public void build(HTableDescriptor desc) throws IOException {
+    IndexUtil.enableIndexing(desc, CoveredColumnIndexer.class, this.convertToMap());
   }
 
   static List<ColumnGroup> getColumns(Configuration conf) {
@@ -103,7 +136,8 @@ public class CoveredColumnIndexSpecifierBuilder {
       String columnsSizeKey = columnPrefix + COUNT;
       int columnCount = conf.getInt(columnsSizeKey, 0);
       for(int j=0; j< columnCount; j++){
-        CoveredColumn column = CoveredColumn.parse(columnPrefix + "." + j);
+        String columnKey = columnPrefix + "." + j;
+        CoveredColumn column = CoveredColumn.parse(conf.get(columnKey));
         group.add(column);
       }
 

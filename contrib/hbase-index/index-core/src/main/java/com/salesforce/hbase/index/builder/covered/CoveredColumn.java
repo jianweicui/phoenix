@@ -101,4 +101,29 @@ public class CoveredColumn {
     // empty qualifier matches all
     return qualifier == null || Arrays.equals(qual, qualifier);
   }
+
+  @Override
+  public boolean equals(Object o) {
+    CoveredColumn other = (CoveredColumn) o;
+    if (this.family.equals(other.family)) {
+      return Bytes.equals(qualifier, other.qualifier);
+    }
+    return false;
+  }
+
+  @Override
+  public int hashCode() {
+    int hash = this.family.hashCode();
+    if (this.qualifier != null) {
+      hash += Bytes.hashCode(qualifier);
+    }
+
+    return hash;
+  }
+
+  @Override
+  public String toString() {
+    String qualString = qualifier == null ? "null" : Bytes.toString(qualifier);
+    return "CoveredColumn:[" + family + ":" + qualString + "]";
+  }
 }

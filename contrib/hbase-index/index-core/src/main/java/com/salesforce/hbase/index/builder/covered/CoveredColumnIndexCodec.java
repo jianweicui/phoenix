@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -47,7 +48,10 @@ public class CoveredColumnIndexCodec {
     this.pk = currentRow.getRow();
     this.group = group;
     this.memstore = new ExposedMemStore(conf, KeyValue.COMPARATOR);
-    addAll(currentRow.list());
+    List<KeyValue> kvs = currentRow.list();
+    if (kvs != null) {
+      addAll(currentRow.list());
+    }
   }
 
   /**
@@ -221,19 +225,52 @@ public class CoveredColumnIndexCodec {
   public Put getPutToIndex(long timestamp) {
     Pair<byte[], List<CoveredColumn>> indexRow = this.getIndexRowKey();
     Put indexInsert = new Put(indexRow.getFirst());
+    addColumnsToPut(indexInsert, indexRow, timestamp);
+    return indexInsert;
+  }
+
+  private static void addColumnsToPut(Put indexInsert, Pair<?, List<CoveredColumn>> columns,
+      long timestamp) {
     // add each of the corresponding families to the put
     int count = 0;
-    for (CoveredColumn column : indexRow.getSecond()) {
+    for (CoveredColumn column : columns.getSecond()) {
       indexInsert.add(INDEX_ROW_COLUMN_FAMILY,
-        ArrayUtils.addAll(Bytes.toBytes(count++), toIndexQualifier(column)), timestamp,
-        null);
+        ArrayUtils.addAll(Bytes.toBytes(count++), toIndexQualifier(column)), timestamp, null);
     }
-    return indexInsert;
   }
 
   private static byte[] toIndexQualifier(CoveredColumn column) {
     return ArrayUtils.addAll(Bytes.toBytes(column.family + CoveredColumn.SEPARATOR),
       column.qualifier);
+  }
+
+  /**
+   * @param pk
+   * @param timestamp
+   * @param values
+   * @return
+   */
+  public static List<KeyValue> getIndexKeyValueForTesting(byte[] pk, long timestamp,
+      List<Pair<byte[], CoveredColumn>> values) {
+
+    int length = 0;
+    List<byte[]> firsts = new ArrayList<byte[]>(values.size());
+    List<CoveredColumn> columns = new ArrayList<CoveredColumn>(values.size());
+    for (Pair<byte[], CoveredColumn> value : values) {
+      firsts.add(value.getFirst());
+      length += value.getFirst().length;
+      columns.add(value.getSecond());
+    }
+
+    byte[] rowKey = composeRowKey(pk, length, firsts);
+    Put p = new Put(rowKey);
+    addColumnsToPut(p, new Pair<Void, List<CoveredColumn>>(null, columns), timestamp);
+    List<KeyValue> kvs = new ArrayList<KeyValue>();
+    for (Entry<byte[], List<KeyValue>> entry : p.getFamilyMap().entrySet()) {
+      kvs.addAll(entry.getValue());
+    }
+
+    return kvs;
   }
 
   /**

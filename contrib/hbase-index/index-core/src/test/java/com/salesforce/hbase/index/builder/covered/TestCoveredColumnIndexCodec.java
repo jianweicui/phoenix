@@ -53,6 +53,19 @@ public class TestCoveredColumnIndexCodec {
     assertTrue("Third index keys don't match!", Bytes.equals(v3, stored.get(2)));
   }
 
+  /**
+   * If the Result has a <tt>null</tt> backing {@link KeyValue} list, you could possibly get a
+   * {@link NullPointerException}.
+   */
+  @Test
+  public void testWorksWithEmptyResult() {
+    ColumnGroup group = new ColumnGroup("group");
+    CoveredColumn column = new CoveredColumn(FAMILY_STRING, QUAL);
+    group.add(column);
+    Result r = new Result();
+    new CoveredColumnIndexCodec(r, group);
+  }
+
   @Test
   public void testFullColumnSpecification() {
     ColumnGroup group = new ColumnGroup("testFullColumnSpecification");
