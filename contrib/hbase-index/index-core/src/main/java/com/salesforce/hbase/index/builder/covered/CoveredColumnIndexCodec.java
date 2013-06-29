@@ -44,14 +44,24 @@ public class CoveredColumnIndexCodec {
   private ExposedMemStore memstore;
   private byte[] pk;
 
-  public CoveredColumnIndexCodec(Result currentRow, ColumnGroup group) {
-    this.pk = currentRow.getRow();
+  public CoveredColumnIndexCodec(byte[] primaryKey, Result currentRow, ColumnGroup group) {
+    this.pk =primaryKey;
     this.group = group;
     this.memstore = new ExposedMemStore(conf, KeyValue.COMPARATOR);
-    List<KeyValue> kvs = currentRow.list();
-    if (kvs != null) {
+    if(!currentRow.isEmpty()){
       addAll(currentRow.list());
     }
+  }
+  
+  /**
+   * Setup the codec on the specified row for the current group of columns
+   * @param currentRow must not return <tt>null</tt> for {@link Result#getRow()} - its expected to
+   *          be the {@link Result} from reading an existing row. If you are not sure, you should
+   *          call the constructor which specifies the primary key.
+   * @param group columns for which we want to build an index codec
+   */
+  public CoveredColumnIndexCodec(Result currentRow, ColumnGroup group) {
+    this(currentRow.getRow(), currentRow, group);
   }
 
   /**
@@ -218,7 +228,7 @@ public class CoveredColumnIndexCodec {
    * @param indexInsert {@link Put} to update with the family:qualifier of each matching value.
    * @param family column family under which to store the columns. The same column is used for all
    *          columns
-   * @param timestamp timestamp at which to include the columns in the {@link Put}
+   * @param timestamp time stamp at which to include the columns in the {@link Put}
    * @param sortedKeys a collection of the keys from the {@link ValueMap} that can be used to search
    *          the value may for a given group.
    */
