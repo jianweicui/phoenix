@@ -1,12 +1,14 @@
 package com.salesforce.hbase.index.builder.covered;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -25,6 +27,8 @@ import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 
+import com.google.common.collect.Ordering;
+import com.google.common.collect.TreeMultimap;
 import com.salesforce.hbase.index.builder.BaseIndexBuilder;
 
 /**
@@ -93,9 +97,10 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
    */
   public static void createIndexTable(HBaseAdmin admin, String indexTable) throws IOException {
     HTableDescriptor index = new HTableDescriptor(indexTable);
-    // index.addFamily(new HColumnDescriptor(INDEX_REMAINING_COLUMN_FAMILY));
-    index.addFamily(new HColumnDescriptor(CoveredColumnIndexCodec.INDEX_ROW_COLUMN_FAMILY));
-
+    HColumnDescriptor col = new HColumnDescriptor(CoveredColumnIndexCodec.INDEX_ROW_COLUMN_FAMILY);
+    // ensure that we can 'see past' delete markers when doing scans
+    col.setKeepDeletedCells(true);
+    index.addFamily(col);
     admin.createTable(index);
   }
 
@@ -141,32 +146,37 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
     final byte[] sourceRow = p.getRow();
     Result r = localTable.get(new Get(sourceRow));
 
-    // override the timestamp to the current time for all edits, if one hasn't been specified
-    long ts = p.getTimeStamp();
-    boolean overrideTimestamp = false;
-    if (ts == HConstants.LATEST_TIMESTAMP) {
-      overrideTimestamp = true;
-      ts = EnvironmentEdgeManager.currentTimeMillis();
+    // we need to check each key-value in the update to see if it matches the others. Generally,
+    // this will be the case, but you can add kvs to a mutation that don't all have the timestamp,
+    // so we need to manage everything in batches based on timestamp.
+    long now = EnvironmentEdgeManager.currentTimeMillis();
+    byte[] nowBytes = Bytes.toBytes(now);
+    // the implict tree sorting here ensures that we always will iterate the kvs in timestamp order
+    TreeMultimap<Long, KeyValue> timestampMap = TreeMultimap.create(Ordering.natural(), KeyValue.COMPARATOR);   
+    for (List<KeyValue> kvs : p.getFamilyMap().values()) {
+      for (KeyValue kv : kvs) {
+        long ts = kv.getTimestamp();
+        // override the timestamp to the current time, so the index and primary tables match
+        // all the keys with LATEST_TIMESTAMP will then be put into the same batch
+        if (ts == HConstants.LATEST_TIMESTAMP) {
+          kv.updateLatestStamp(nowBytes);
+        }
+        timestampMap.put(kv.getTimestamp(), kv);
+      }
     }
-    byte[] timestamp = Bytes.toBytes(ts);
 
     // build the index updates for each group
     Map<Mutation, String> updateMap = new HashMap<Mutation, String>();
-    List<ColumnGroup> matches = findMatchingGroups(p);
+    Collection<ColumnGroup> matches = findMatchingGroups(p);
 
-    // build up the index entries for each group
-    for (ColumnGroup group : matches) {
-      CoveredColumnIndexCodec codec = new CoveredColumnIndexCodec(sourceRow, r, group);
-      getMutationsForPut(updateMap, group, ts, codec, p);
-    }
-
-    // update all the put timestamps to match the index entries, if we are not specifying a custom
-    // timestamp
-    if (overrideTimestamp) {
-      for (Entry<byte[], List<KeyValue>> entry : p.getFamilyMap().entrySet()) {
-        for (KeyValue kv : entry.getValue()) {
-          kv.updateLatestStamp(timestamp);
-        }
+    // we can use a single codec for everything, as long as we apply the updates in timestamp order
+    CoveredColumnIndexCodec codec = new CoveredColumnIndexCodec(sourceRow, r);
+    // go through each batch of keyvalues and build separate index entries for each
+    for (Entry<Long, Collection<KeyValue>> batch : timestampMap.asMap().entrySet()) {
+      // build up the index entries for each group in each batch
+      for (ColumnGroup group : matches) {
+        codec.setGroup(group);
+        getMutationsForPut(updateMap, group, batch.getKey(), codec, batch.getValue());
       }
     }
 
@@ -181,7 +191,7 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
    * @param pendingUpdate update being added to the table
    */
   private void getMutationsForPut(Map<Mutation, String> mutations, ColumnGroup group,
-      long timestamp, CoveredColumnIndexCodec codec, Put pendingUpdate) {
+      long timestamp, CoveredColumnIndexCodec codec, Collection<KeyValue> pendingUpdate) {
     /*
      * Generally, the current Put will be the most recent thing to be added. In that case, all we
      * need to is issue a delete for the previous index row (the state of the row, without the put
@@ -206,7 +216,7 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
 
     // update the index with the added data. We do this second so we don't need to copy over the
     // keys after applying the put
-    codec.addUpdate(pendingUpdate);
+    codec.addAll(pendingUpdate);
     Put indexInsert = codec.getPutToIndex(timestamp);
     mutations.put(indexInsert, table);
   }
@@ -257,7 +267,7 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
     }
 
     // check the map to see if we are affecting any of the groups
-    List<ColumnGroup> matches = findMatchingGroups(d);
+    Collection<ColumnGroup> matches = findMatchingGroups(d);
 
     // build up the index entries for each group
     for (ColumnGroup group : matches) {
@@ -342,9 +352,16 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
    * @param m mutation to match against
    * @return the {@link ColumnGroup}s that should be updated with this {@link Mutation}.
    */
-  private List<ColumnGroup> findMatchingGroups(Mutation m) {
-    List<ColumnGroup> matches = new ArrayList<ColumnGroup>();
+  private Collection<ColumnGroup> findMatchingGroups(Mutation m) {
+    // just using pointer hashes here - we don't need to calculate actual equality, just that we
+    // don't get dupes
+    Set<ColumnGroup> matches = new HashSet<ColumnGroup>();
     for (Entry<byte[], List<KeyValue>> entry : m.getFamilyMap().entrySet()) {
+      // early exit if we already know we need to match all the groups
+      if (matches.size() == this.groups.size()) {
+        return matches;
+      }
+
       // get the keys for this family that we are indexing
       List<KeyValue> kvs = entry.getValue();
       if (kvs == null || kvs.isEmpty()) {

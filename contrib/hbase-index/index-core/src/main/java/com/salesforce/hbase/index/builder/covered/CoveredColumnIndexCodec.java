@@ -65,12 +65,27 @@ public class CoveredColumnIndexCodec {
   }
 
   /**
+   * Create a codec on the given primary row with the given backing current state. If you use this
+   * constructor, you must specify a group via {@link #setGroup(ColumnGroup)} before calling any
+   * other instance methods.
+   * @param sourceRow primary key of the row in questions
+   * @param r current state of the current row (can be empty)
+   */
+  public CoveredColumnIndexCodec(byte[] sourceRow, Result r) {
+    this(sourceRow, r, null);
+  }
+
+  public void setGroup(ColumnGroup group) {
+    this.group = group;
+  }
+
+  /**
    * Add all the {@link KeyValue}s in the list to the memstore. This is just a small utility method
    * around {@link ExposedMemStore#add(KeyValue)} to make it easier to deal with batches of
    * {@link KeyValue}s.
    * @param list keyvalues to add
    */
-  private void addAll(List<KeyValue> list) {
+  public void addAll(Iterable<KeyValue> list) {
     for (KeyValue kv : list) {
       this.memstore.add(kv);
     }
