@@ -156,7 +156,6 @@ public class TestEndToEndCoveredIndexing {
 
     // create the index tables
     CoveredColumnIndexer.createIndexTable(admin, INDEX_TABLE);
-    CoveredColumnIndexer.createIndexTable(admin, INDEX_TABLE2);
 
     // do a put to the primary table
     byte[] row1 = Bytes.toBytes("row1");
@@ -268,8 +267,8 @@ public class TestEndToEndCoveredIndexing {
   private void verifyIndexTableAtTimestamp(HTable index1, List<KeyValue> expected, long ts,
       byte[] startKey) throws IOException {
     Scan s = new Scan(startKey);
-    // s.setTimeStamp(ts);
-    s.setRaw(true);
+    s.setTimeStamp(ts);
+    // s.setRaw(true);
     List<KeyValue> received = new ArrayList<KeyValue>();
     ResultScanner scanner = index1.getScanner(s);
     for (Result r : scanner) {

@@ -73,4 +73,9 @@ public class ColumnGroup implements Iterable<CoveredColumn> {
   public CoveredColumn get(int index) {
     return this.columns.get(index);
   }
+
+  @Override
+  public String toString() {
+    return "ColumnGroup - table: " + table + ", columns: " + columns;
+  }
 }

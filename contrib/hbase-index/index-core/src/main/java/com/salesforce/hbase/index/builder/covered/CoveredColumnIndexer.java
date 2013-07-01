@@ -149,21 +149,7 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
     // we need to check each key-value in the update to see if it matches the others. Generally,
     // this will be the case, but you can add kvs to a mutation that don't all have the timestamp,
     // so we need to manage everything in batches based on timestamp.
-    long now = EnvironmentEdgeManager.currentTimeMillis();
-    byte[] nowBytes = Bytes.toBytes(now);
-    // the implict tree sorting here ensures that we always will iterate the kvs in timestamp order
-    TreeMultimap<Long, KeyValue> timestampMap = TreeMultimap.create(Ordering.natural(), KeyValue.COMPARATOR);   
-    for (List<KeyValue> kvs : p.getFamilyMap().values()) {
-      for (KeyValue kv : kvs) {
-        long ts = kv.getTimestamp();
-        // override the timestamp to the current time, so the index and primary tables match
-        // all the keys with LATEST_TIMESTAMP will then be put into the same batch
-        if (ts == HConstants.LATEST_TIMESTAMP) {
-          kv.updateLatestStamp(nowBytes);
-        }
-        timestampMap.put(kv.getTimestamp(), kv);
-      }
-    }
+    TreeMultimap<Long, KeyValue> timestampMap = createTimestampBatchesFromFamilyMap(p);
 
     // build the index updates for each group
     Map<Mutation, String> updateMap = new HashMap<Mutation, String>();
@@ -171,27 +157,28 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
 
     // we can use a single codec for everything, as long as we apply the updates in timestamp order
     CoveredColumnIndexCodec codec = new CoveredColumnIndexCodec(sourceRow, r);
+
     // go through each batch of keyvalues and build separate index entries for each
     for (Entry<Long, Collection<KeyValue>> batch : timestampMap.asMap().entrySet()) {
-      // build up the index entries for each group in each batch
-      for (ColumnGroup group : matches) {
-        codec.setGroup(group);
-        getMutationsForPut(updateMap, group, batch.getKey(), codec, batch.getValue());
-      }
+      /*
+       * We have to split the work between the cleanup and the update for each group because when we
+       * update the current state of the row for the current batch (appending the mutations for the
+       * current batch) the next group will see that as the current state, which will can cause the
+       * a delete and a put to be created for the next group.
+       */
+      addMutationsForBatch(updateMap, batch, matches, codec);
     }
 
     return updateMap;
   }
 
   /**
-   * Adds the necessary index updates for the column group to the map of mutations
-   * @param group for which to build the index update
-   * @param timestamp timestamp of the current update
-   * @param curerntRow current state of the row from the table
-   * @param pendingUpdate update being added to the table
+   * @param updateMap
+   * @param batch
    */
-  private void getMutationsForPut(Map<Mutation, String> mutations, ColumnGroup group,
-      long timestamp, CoveredColumnIndexCodec codec, Collection<KeyValue> pendingUpdate) {
+  private void addMutationsForBatch(Map<Mutation, String> updateMap,
+      Entry<Long, Collection<KeyValue>> batch, Collection<ColumnGroup> matches,
+      CoveredColumnIndexCodec codec) {
     /*
      * Generally, the current Put will be the most recent thing to be added. In that case, all we
      * need to is issue a delete for the previous index row (the state of the row, without the put
@@ -201,24 +188,61 @@ public class CoveredColumnIndexer extends BaseIndexBuilder {
      * If things arrive out of order (we are using custom timestamps) we should always still only
      * see the most recent update in the index, even if we are making a put back in time (out of
      * order). Therefore, we need to issue a delete for the index update but at the next most recent
+     * timestam; using batches helps, but we still need to do this iteratively since we need to
+     * cleanup the current state first as it could be overwritten by a key-value at the same
      * timestamp
      */
+    
+    long ts = batch.getKey();
+    // start by getting the cleanup for the current state of the
+    for (ColumnGroup group : matches) {
+      codec.setGroup(group);
+      Delete cleanup = getIndexCleanupForCurrentRow(codec, ts);
+      String table = group.getTable();
+      if (cleanup != null) {
+        updateMap.put(cleanup, table);
+      }
 
-    Delete cleanup = getIndexCleanupForCurrentRow(codec, timestamp);
-    String table = group.getTable();
-    if (cleanup != null) {
-      mutations.put(cleanup, table);
     }
 
-    // we could try building the index update from just the put, but all the components are probably
-    // not covered by the Put, so we spend a bunch of time checking the Put when we are going to
-    // need to look at the current row anyways.
+    // add the current batch to the map
+    codec.addAll(batch.getValue());
 
-    // update the index with the added data. We do this second so we don't need to copy over the
-    // keys after applying the put
-    codec.addAll(pendingUpdate);
-    Put indexInsert = codec.getPutToIndex(timestamp);
-    mutations.put(indexInsert, table);
+    // get the updates to the current index
+    for (ColumnGroup group : matches) {
+      codec.setGroup(group);
+      String table = group.getTable();
+      Put indexInsert = codec.getPutToIndex(ts);
+      updateMap.put(indexInsert, table);
+    }
+  }
+
+  /**
+   * Batch all the {@link KeyValue}s in a {@link Mutation} by timestamp. Updates any
+   * {@link KeyValue} with a timestamp == {@link HConstants#LATEST_TIMESTAMP} to a single value
+   * obtained when the method is called.
+   * @param m {@link Mutation} from which to extract the {@link KeyValue}s
+   * @return map of timestamp to all the keyvalues with the same timestamp. the implict tree sorting
+   *         in the returned ensures that batches (when iterating through the keys) will iterate the
+   *         kvs in timestamp order
+   */
+  private TreeMultimap<Long, KeyValue> createTimestampBatchesFromFamilyMap(Mutation m) {
+    long now = EnvironmentEdgeManager.currentTimeMillis();
+    byte[] nowBytes = Bytes.toBytes(now);
+    TreeMultimap<Long, KeyValue> batches = TreeMultimap.create(Ordering.natural(),
+      KeyValue.COMPARATOR);
+    for (List<KeyValue> kvs : m.getFamilyMap().values()) {
+      for (KeyValue kv : kvs) {
+        long ts = kv.getTimestamp();
+        // override the timestamp to the current time, so the index and primary tables match
+        // all the keys with LATEST_TIMESTAMP will then be put into the same batch
+        if (ts == HConstants.LATEST_TIMESTAMP) {
+          kv.updateLatestStamp(nowBytes);
+        }
+        batches.put(kv.getTimestamp(), kv);
+      }
+    }
+    return batches;
   }
 
   @Override
