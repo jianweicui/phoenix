@@ -318,8 +318,67 @@ public class TestEndToEndCoveredIndexing {
   }
   
   @Test
-  public void testSimpleDelete() throws Exception{
-  //setup the index 
+  public void testSimpleDeletes() throws Exception {
+
+    // setup the index
+    CoveredColumnIndexSpecifierBuilder builder = new CoveredColumnIndexSpecifierBuilder();
+    builder.addIndexGroup(fam1);
+
+    // setup the primary table
+    String indexedTableName = "testSimpleDelete";
+    HTableDescriptor pTable = new HTableDescriptor(indexedTableName);
+    pTable.addFamily(new HColumnDescriptor(FAM));
+    pTable.addFamily(new HColumnDescriptor(FAM2));
+    builder.build(pTable);
+
+    // create the primary table
+    HBaseAdmin admin = UTIL.getHBaseAdmin();
+    admin.createTable(pTable);
+    HTable primary = new HTable(UTIL.getConfiguration(), indexedTableName);
+
+    // create the index tables
+    CoveredColumnIndexer.createIndexTable(admin, INDEX_TABLE);
+
+    // do a simple Put
+    byte[] row = Bytes.toBytes("row1");
+    byte[] value1 = Bytes.toBytes("val1");
+    byte[] value2 = Bytes.toBytes("val2");
+    long ts = 10;
+    Put p = new Put(row);
+    p.add(FAM, indexed_qualifer, ts, value1);
+    p.add(FAM, regular_qualifer, ts, value2);
+    primary.put(p);
+    primary.flushCommits();
+
+    Delete d = new Delete(row);
+    primary.delete(d);
+
+    HTable index = new HTable(UTIL.getConfiguration(), INDEX_TABLE);
+    List<KeyValue> expected = Collections.<KeyValue> emptyList();
+    // scan over all time should cause the delete to be covered
+    verifyIndexTableAtTimestamp(index, expected, 0, Long.MAX_VALUE, value1,
+      HConstants.EMPTY_END_ROW);
+
+    // scan at the older timestamp should still show the older value
+    List<Pair<byte[], CoveredColumn>> pairs = new ArrayList<Pair<byte[], CoveredColumn>>();
+    pairs.add(new Pair<byte[], CoveredColumn>(value1, col1));
+    pairs.add(new Pair<byte[], CoveredColumn>(EMPTY_BYTES, col2));
+    expected = CoveredColumnIndexCodec.getIndexKeyValueForTesting(row, ts, pairs);
+    verifyIndexTableAtTimestamp(index, expected, ts, value1);
+
+    // cleanup
+    closeAndCleanupTables(index, primary);
+  }
+
+  /**
+   * If we don't have any updates to make to the index, we don't take a lock on the WAL. However, we
+   * need to make sure that we don't try to unlock the WAL on write time when we don't write
+   * anything, since that will cause an java.lang.IllegalMonitorStateException
+   * @throws Exception on failure
+   */
+  @Test
+  public void testDeletesWithoutPreviousState() throws Exception {
+    // setup the index
     CoveredColumnIndexSpecifierBuilder builder = new CoveredColumnIndexSpecifierBuilder();
     builder.addIndexGroup(fam1);
 
@@ -345,7 +404,6 @@ public class TestEndToEndCoveredIndexing {
     long ts = 10;
     Delete d = new Delete(row1);
     primary.delete(d);
-    primary.flushCommits();
 
     HTable index1 = new HTable(UTIL.getConfiguration(), INDEX_TABLE);
     List<KeyValue> expected = Collections.<KeyValue> emptyList();
@@ -355,14 +413,12 @@ public class TestEndToEndCoveredIndexing {
     d = new Delete(row1);
     d.deleteColumn(FAM, indexed_qualifer);
     primary.delete(d);
-    primary.flushCommits();
     verifyIndexTableAtTimestamp(index1, expected, ts, value1);
 
     // also just a family marker should have the same effect
     d = new Delete(row1);
     d.deleteFamily(FAM);
     primary.delete(d);
-    primary.flushCommits();
     verifyIndexTableAtTimestamp(index1, expected, ts, value1);
 
     // also just a family marker should have the same effect
@@ -381,10 +437,16 @@ public class TestEndToEndCoveredIndexing {
     verifyIndexTableAtTimestamp(index1, expected, ts, startKey, HConstants.EMPTY_END_ROW);
   }
 
-  private void verifyIndexTableAtTimestamp(HTable index1, List<KeyValue> expected, long ts,
+  private void verifyIndexTableAtTimestamp(HTable index1, List<KeyValue> expected, long start,
+      byte[] startKey, byte[] endKey) throws IOException {
+    verifyIndexTableAtTimestamp(index1, expected, start, start + 1, startKey, endKey);
+  }
+
+  private void verifyIndexTableAtTimestamp(HTable index1, List<KeyValue> expected, long start,
+      long end,
       byte[] startKey, byte[] endKey) throws IOException {
     Scan s = new Scan(startKey, endKey);
-    s.setTimeStamp(ts);
+    s.setTimeRange(start, end);
     // s.setRaw(true);
     List<KeyValue> received = new ArrayList<KeyValue>();
     ResultScanner scanner = index1.getScanner(s);
