@@ -144,7 +144,7 @@ public class TestEndtoEndIndexing {
     admin.createTable(primary);
 
     // create the index table
-    CoveredColumnIndexer.createIndexTable(admin, INDEX_TABLE);
+    ColumnFamilyIndexer.createIndexTable(admin, INDEX_TABLE);
 
     assertTrue("Target index table (" + INDEX_TABLE + ") didn't get created!",
       admin.tableExists(INDEX_TABLE));
