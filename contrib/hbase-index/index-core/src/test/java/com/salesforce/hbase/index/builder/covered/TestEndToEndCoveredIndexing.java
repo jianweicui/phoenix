@@ -41,6 +41,10 @@ public class TestEndToEndCoveredIndexing {
   private static final byte[] EMPTY_BYTES = new byte[0];
   private static final byte[] indexed_qualifer = Bytes.toBytes("indexed_qual");
   private static final byte[] regular_qualifer = Bytes.toBytes("reg_qual");
+  private static final byte[] row1 = Bytes.toBytes("row1");
+  private static final byte[] value1 = Bytes.toBytes("val1");
+  private static final byte[] value2 = Bytes.toBytes("val2");
+  private static final byte[] value3 = Bytes.toBytes("val3");
 
   // setup a couple of index columns
   private static final ColumnGroup fam1 = new ColumnGroup(INDEX_TABLE);
@@ -95,9 +99,6 @@ public class TestEndToEndCoveredIndexing {
     CoveredColumnIndexer.createIndexTable(admin, INDEX_TABLE);
 
     // do a put to the primary table
-    byte[] row1 = Bytes.toBytes("row1");
-    byte[] value1 = Bytes.toBytes("val1");
-    byte[] value2 = Bytes.toBytes("val2");
     Put p = new Put(row1);
     long ts = 10;
     p.add(FAM, indexed_qualifer, ts, value1);
@@ -147,10 +148,6 @@ public class TestEndToEndCoveredIndexing {
     CoveredColumnIndexer.createIndexTable(admin, INDEX_TABLE);
 
     // do a put to the primary table
-    byte[] row1 = Bytes.toBytes("row1");
-    byte[] value1 = Bytes.toBytes("val1");
-    byte[] value2 = Bytes.toBytes("val2");
-    byte[] value3 = Bytes.toBytes("val3");
     Put p = new Put(row1);
     long ts1 = 10;
     long ts2 = 11;
@@ -212,10 +209,6 @@ public class TestEndToEndCoveredIndexing {
     CoveredColumnIndexer.createIndexTable(admin, INDEX_TABLE2);
 
     // do a put to the primary table
-    byte[] row1 = Bytes.toBytes("row1");
-    byte[] value1 = Bytes.toBytes("val1");
-    byte[] value2 = Bytes.toBytes("val2");
-    byte[] value3 = Bytes.toBytes("val3");
     Put p = new Put(row1);
     long ts = 10;
     p.add(FAM, indexed_qualifer, ts, value1);
@@ -274,11 +267,7 @@ public class TestEndToEndCoveredIndexing {
     CoveredColumnIndexer.createIndexTable(admin, INDEX_TABLE);
 
     // do a put to the primary table
-    byte[] row = Bytes.toBytes("row1");
-    byte[] value1 = Bytes.toBytes("val1");
-    byte[] value2 = Bytes.toBytes("val2");
-    byte[] value3 = Bytes.toBytes("val3");
-    Put p = new Put(row);
+    Put p = new Put(row1);
     long ts = 10;
     p.add(FAM, indexed_qualifer, ts, value1);
     p.add(FAM, regular_qualifer, ts, value2);
@@ -294,11 +283,11 @@ public class TestEndToEndCoveredIndexing {
     pairs.add(new Pair<byte[], CoveredColumn>(EMPTY_BYTES, col2));
 
     // check the first entry at ts
-    List<KeyValue> expected = CoveredColumnIndexCodec.getIndexKeyValueForTesting(row, ts, pairs);
+    List<KeyValue> expected = CoveredColumnIndexCodec.getIndexKeyValueForTesting(row1, ts, pairs);
     verifyIndexTableAtTimestamp(index1, expected, ts, value1);
 
     // now overwrite the put in the primary table with a new value
-    p = new Put(row);
+    p = new Put(row1);
     p.add(FAM, indexed_qualifer, ts, value3);
     primary.put(p);
     primary.flushCommits();
@@ -308,7 +297,7 @@ public class TestEndToEndCoveredIndexing {
     pairs.add(new Pair<byte[], CoveredColumn>(EMPTY_BYTES, col2));
 
     // check the first entry at ts
-    expected = CoveredColumnIndexCodec.getIndexKeyValueForTesting(row, ts, pairs);
+    expected = CoveredColumnIndexCodec.getIndexKeyValueForTesting(row1, ts, pairs);
     verifyIndexTableAtTimestamp(index1, expected, ts, value3);
     // and verify that a scan at the first entry returns nothing (ignore the updated row)
     verifyIndexTableAtTimestamp(index1, Collections.<KeyValue> emptyList(), ts, value1, value2);
@@ -340,17 +329,14 @@ public class TestEndToEndCoveredIndexing {
     CoveredColumnIndexer.createIndexTable(admin, INDEX_TABLE);
 
     // do a simple Put
-    byte[] row = Bytes.toBytes("row1");
-    byte[] value1 = Bytes.toBytes("val1");
-    byte[] value2 = Bytes.toBytes("val2");
     long ts = 10;
-    Put p = new Put(row);
+    Put p = new Put(row1);
     p.add(FAM, indexed_qualifer, ts, value1);
     p.add(FAM, regular_qualifer, ts, value2);
     primary.put(p);
     primary.flushCommits();
 
-    Delete d = new Delete(row);
+    Delete d = new Delete(row1);
     primary.delete(d);
 
     HTable index = new HTable(UTIL.getConfiguration(), INDEX_TABLE);
@@ -363,7 +349,7 @@ public class TestEndToEndCoveredIndexing {
     List<Pair<byte[], CoveredColumn>> pairs = new ArrayList<Pair<byte[], CoveredColumn>>();
     pairs.add(new Pair<byte[], CoveredColumn>(value1, col1));
     pairs.add(new Pair<byte[], CoveredColumn>(EMPTY_BYTES, col2));
-    expected = CoveredColumnIndexCodec.getIndexKeyValueForTesting(row, ts, pairs);
+    expected = CoveredColumnIndexCodec.getIndexKeyValueForTesting(row1, ts, pairs);
     verifyIndexTableAtTimestamp(index, expected, ts, value1);
 
     // cleanup
@@ -398,9 +384,6 @@ public class TestEndToEndCoveredIndexing {
     CoveredColumnIndexer.createIndexTable(admin, INDEX_TABLE);
 
     // do a delete on the primary table (no data, so no index updates...hopefully).
-    byte[] row1 = Bytes.toBytes("row1");
-    byte[] value1 = Bytes.toBytes("val1");
-    byte[] value2 = Bytes.toBytes("val2");
     long ts = 10;
     Delete d = new Delete(row1);
     primary.delete(d);
