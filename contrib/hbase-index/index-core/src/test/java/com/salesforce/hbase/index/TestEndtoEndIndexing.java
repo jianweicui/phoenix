@@ -44,7 +44,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.salesforce.hbase.index.builder.ColumnFamilyIndexer;
-import com.salesforce.hbase.index.builder.covered.CoveredColumnIndexer;
 
 /**
  * Test secondary indexing from an end-to-end perspective (client to server to index table)

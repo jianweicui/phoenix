@@ -246,9 +246,17 @@ public class CoveredColumnIndexCodec {
    * @param timestamp time stamp at which to include the columns in the {@link Put}
    * @param sortedKeys a collection of the keys from the {@link ValueMap} that can be used to search
    *          the value may for a given group.
+   * @return the put to add to the index table or <tt>null</tt> if no update is necessary
    */
   public Put getPutToIndex(long timestamp) {
     Pair<byte[], List<CoveredColumn>> indexRow = this.getIndexRowKey();
+    byte[] rowKey = indexRow.getFirst();
+
+    // no update to the table, we are done
+    if (CoveredColumnIndexCodec.checkRowKeyForAllNulls(rowKey)) {
+      return null;
+    }
+    
     Put indexInsert = new Put(indexRow.getFirst());
     addColumnsToPut(indexInsert, indexRow, timestamp);
     return indexInsert;

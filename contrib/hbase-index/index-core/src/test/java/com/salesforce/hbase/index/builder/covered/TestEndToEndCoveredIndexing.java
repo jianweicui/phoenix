@@ -415,6 +415,74 @@ public class TestEndToEndCoveredIndexing {
     closeAndCleanupTables(primary, index1);
   }
 
+  /**
+   * Similar to the {@link #testMultipleTimestampsInSinglePut()}, this check the same with deletes
+   * @throws Exception on failure
+   */
+  @Test
+  public void testMultipleTimestampsInSingleDelete() throws Exception {
+    // setup the index
+    CoveredColumnIndexSpecifierBuilder builder = new CoveredColumnIndexSpecifierBuilder();
+    builder.addIndexGroup(fam1);
+
+    // setup the primary table
+    String indexedTableName = "testMultipleTimestampsInSinglePut";
+    HTableDescriptor pTable = new HTableDescriptor(indexedTableName);
+    pTable.addFamily(new HColumnDescriptor(FAM));
+    pTable.addFamily(new HColumnDescriptor(FAM2));
+    builder.build(pTable);
+
+    // create the primary table
+    HBaseAdmin admin = UTIL.getHBaseAdmin();
+    admin.createTable(pTable);
+    HTable primary = new HTable(UTIL.getConfiguration(), indexedTableName);
+
+    // create the index tables
+    CoveredColumnIndexer.createIndexTable(admin, INDEX_TABLE);
+
+    // do a put to the primary table
+    Put p = new Put(row1);
+    long ts1 = 10, ts2 = 11, ts3 = 12;
+    p.add(FAM, indexed_qualifer, ts1, value1);
+    p.add(FAM, regular_qualifer, ts1, value2);
+    // our group indexes all columns in the this family, so any qualifier here is ok
+    p.add(FAM2, regular_qualifer, ts2, value3);
+    primary.put(p);
+    primary.flushCommits();
+
+    // now build up a delete with a couple different timestamps
+    Delete d = new Delete(row1);
+    d.deleteColumn(FAM, indexed_qualifer, ts2);
+    d.deleteColumn(FAM2, regular_qualifer, ts3);
+    primary.delete(d);
+
+    // read the index for the expected values
+    HTable index1 = new HTable(UTIL.getConfiguration(), INDEX_TABLE);
+
+    // build the expected kvs
+    List<Pair<byte[], CoveredColumn>> pairs = new ArrayList<Pair<byte[], CoveredColumn>>();
+    pairs.add(new Pair<byte[], CoveredColumn>(value1, col1));
+    pairs.add(new Pair<byte[], CoveredColumn>(EMPTY_BYTES, col2));
+
+    // check the first entry at ts1
+    List<KeyValue> expected = CoveredColumnIndexCodec.getIndexKeyValueForTesting(row1, ts1, pairs);
+    verifyIndexTableAtTimestamp(index1, expected, ts1, value1);
+
+    // delete at ts2 changes what the put would insert
+    pairs.clear();
+    pairs.add(new Pair<byte[], CoveredColumn>(EMPTY_BYTES, col1));
+    pairs.add(new Pair<byte[], CoveredColumn>(value3, col2));
+    expected = CoveredColumnIndexCodec.getIndexKeyValueForTesting(row1, ts2, pairs);
+    verifyIndexTableAtTimestamp(index1, expected, ts2, value1);
+
+    // final delete clears out everything
+    expected = Collections.emptyList();
+    verifyIndexTableAtTimestamp(index1, expected, ts3, value1);
+
+    // cleanup
+    closeAndCleanupTables(primary, index1);
+  }
+
   private void verifyIndexTableAtTimestamp(HTable index1, List<KeyValue> expected, long ts,
       byte[] startKey) throws IOException {
     verifyIndexTableAtTimestamp(index1, expected, ts, startKey, HConstants.EMPTY_END_ROW);
